@@ -5,8 +5,8 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import mean_squared_error
 from glob import glob
 
-root_path = "../Results/comp_9drugs_long"
-clinical_info_path = "../Data/Preprocessed_OOL_Clinical.csv"
+root_path = "./Results/comp_9drugs_long"
+clinical_info_path = "./Data/Preprocessed_OOL_Clinical.csv"
 drug_list = ['PRA','LPZ','SALPZ','SA','MF','CHT','THF','RIF','MAP']
 
 preterm_patients = ['17_G1', '17_G2', '27_G1', '27_G2', '27_G3', '33_G1', '33_G2',
