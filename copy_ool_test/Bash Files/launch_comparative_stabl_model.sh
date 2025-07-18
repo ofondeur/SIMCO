@@ -6,7 +6,7 @@ ARTIFICIALS=("knockoff")
 FEATURES=("ina_13OG_final_long_allstims_filtered.csv")
 
 # Paths
-BASE_DIR="/home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test"
+BASE_DIR="../"
 SCRIPT_DIR="${BASE_DIR}/jobs"
 LOG_DIR="${BASE_DIR}/logs"
 mkdir -p "$SCRIPT_DIR" "$LOG_DIR"
@@ -18,8 +18,8 @@ for model in "${MODELS[@]}"; do
 
       feature_base=$(basename "$feature" .csv)
       job_name="${feature_base}_${model}_${artificial}_GSS"
-      result_dir="${BASE_DIR}/results_${job_name}"
-      features_path="${BASE_DIR}/${feature}"
+      result_dir="${BASE_DIR}/Results/results_${job_name}"
+      features_path="${BASE_DIR}/Data/${feature}"
       script_path="${SCRIPT_DIR}/job_${job_name}.sh"
       log_out="${LOG_DIR}/${job_name}_%j.out"
       log_err="${LOG_DIR}/${job_name}_%j.err"
