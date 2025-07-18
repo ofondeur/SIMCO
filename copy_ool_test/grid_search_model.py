@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.insert(0, '/home/groups/gbrice/ptb-drugscreen/ot/cellot/stablVMax')
+sys.path.insert(0, '../cellot/stablVMax')
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -56,10 +55,10 @@ args = parser.parse_args()
 
 # --- Use Parsed Arguments ---
 features_path = args.features_path
-artificial_type_arg = args.artificial_type # Store the argument value
+artificial_type_arg = args.artificial_type
 model_chosen=args.model_chosen
 
-# Define outcome path (can remain hardcoded if it's always the same)
+# Define outcome path
 outcome_path = "/home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/outcome_table_all_pre.csv"
 
 # Define output path dynamically based on inputs
@@ -77,6 +76,7 @@ os.makedirs(results_path, exist_ok=True)
 df_features = pd.read_csv(features_path, index_col=0)
 df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
 df_outcome = df_outcome[df_outcome.index.isin(df_features.index)]
+
 # Outcome is in the column 'DOS'
 y = df_outcome["DOS"]
 
@@ -87,7 +87,7 @@ df_features = df_features[df_features.index.isin(y.index)]
 # Split features by stim
 # ---------------------------
 
-stims = ['TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33'] #'Unstim', 
+stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
 stims_with_suffixes = [f"{stim}_OOL" for stim in stims] + [f"{stim}_CellOT" for stim in stims]
 
 data_dict = {}
@@ -108,11 +108,11 @@ groups = df_features.index.to_series().apply(lambda x: x.split('_')[0])
 
 outer_cv = GroupShuffleSplit(n_splits=100, test_size=0.2, random_state=42)
 
-#outer_cv = LeaveOneGroupOut()
-print(f"INFO: Using LeaveOneGroupOut for outer CV ({groups.nunique()} groups/folds expected).") # Optional: Add print statement
+print(f"INFO: Using GroupShuffleSplit for outer CV ({groups.nunique()} groups/folds expected).")
 
 # Inner CV for grid search: use RepeatedKFold
 inner_cv = RepeatedKFold(n_splits=5, n_repeats=5, random_state=42)
+
 lasso = Lasso(max_iter=int(1e6), random_state=42)
 lasso_cv = GridSearchCV(
     lasso,
@@ -121,8 +121,6 @@ lasso_cv = GridSearchCV(
     cv=inner_cv,
     n_jobs=-1
 )
-
-# ElasticNet estimator and its grid-search (our main focus)
 en = ElasticNet(max_iter=int(1e6), random_state=42)
 en_cv = GridSearchCV(
     en,
@@ -132,7 +130,6 @@ en_cv = GridSearchCV(
     n_jobs=-1
 )
 
-# Adaptive Lasso estimator and its grid-search
 alasso = ALasso(max_iter=int(1e6), random_state=42)
 alasso_cv = GridSearchCV(
     alasso,
@@ -142,31 +139,26 @@ alasso_cv = GridSearchCV(
     n_jobs=-1
 )
 
-# ---------------------------
-# Define STABL instances with 500 bootstraps and random permutation
-# ---------------------------
-# For STABL Lasso:
 stabl_lasso = Stabl(
     base_estimator=lasso,
     n_bootstraps=1000,
     artificial_type=artificial_type_arg,
-    artificial_proportion=1.0, #artificial_proportion=0.8
+    artificial_proportion=1.0,
     replace=False,
     fdr_threshold_range=np.arange(0.1, 1, 0.01),
     sample_fraction=0.5,
     random_state=42,
-    lambda_grid={"alpha": np.logspace(0, 2, 10)}, #lambda_grid={"alpha": np.logspace(-3, 1, 15)} 
+    lambda_grid={"alpha": np.logspace(0, 2, 10)},
     verbose=1
 )
 
-# STABL ALasso (clone and change the base estimator)
+# Create STABL models for Lasso, ALasso and ElasticNet
 stabl_alasso = clone(stabl_lasso).set_params(
     base_estimator=alasso,
     lambda_grid={"alpha": np.logspace(0, 2, 10)},
     verbose=1
 )
 
-# STABL ElasticNet (our main focus: Stabl en)
 stabl_en = clone(stabl_lasso).set_params(
     base_estimator=en,
     lambda_grid=[{"alpha": np.logspace(0.5, 2, 10), "l1_ratio": [0.5, 0.7, 0.9]}],
@@ -184,9 +176,12 @@ estimators = {
 }
 
 models = [
-    "STABL ALasso"
+    "STABL ALasso",
+    "STABL Lasso",
+    "STABL ElasticNet",
 ]
 
+# Define parameters grid for XGBoost
 param_grid = {
     "n_estimators": [300, 500],
     "max_depth": [2, 4, 10],
@@ -197,28 +192,6 @@ param_grid = {
     'reg_alpha': [0], 
     'reg_lambda': [1]
 }
-
-param_grid_simple = {
-    "n_estimators": [100],
-    "max_depth": [6],
-    "learning_rate": [0.3],
-    "subsample": [1],
-    "colsample_bytree": [1],
-    "gamma": [0],
-    "reg_alpha": [0],
-    "reg_lambda": [1],
-}
-
-
-param_grid_rf = {
-    "n_estimators": [300, 500],
-    "max_depth": [5, 10, None],
-    "min_samples_split": [2, 5],
-    "min_samples_leaf": [1, 2],
-    "max_features": ["sqrt", 0.5],
-    "bootstrap": [True, False],
-}
-
 
 all_combinations = list(itertools.product(*param_grid.values()))
 param_names = list(param_grid.keys())
@@ -234,13 +207,11 @@ for i, param_values in enumerate(all_combinations):
 
     xgboost_model = XGBRegressor(**param_dict, verbosity=0)
     estimators["xgboost"] = xgboost_model
-    #rf_model = RandomForestRegressor(**param_dict, random_state=42)
-    #estimators["random_forest"] = rf_model
     
     tmp_path = Path(results_path) / f"gridsearch_tmp_{i}"
     tmp_path.mkdir(parents=True, exist_ok=True)
 
-    # Launch prediction fr this set of parameter
+    # Launch prediction for this set of parameter
     predictions_dict = cv_on_existing_feats(
         data_dict=data_dict,
         y=y,
@@ -265,12 +236,11 @@ for i, param_values in enumerate(all_combinations):
         rmse = np.sqrt(mean_squared_error(true_y, pred_y))
         print(f"{model} → RMSE: {rmse:.4f}")
     
-        if rmse < best_scores[model]: #chaneg to mae for MAE
-            # Nouveau meilleur modèle → on garde le dossier
+        if rmse < best_scores[model]:
             best_scores[model] = rmse
             best_combinations[model] = param_dict
             best_paths[model] = tmp_path
-            keep_tmp = True  # Au moins un modèle veut ce dossier
+            keep_tmp = True
     
     if not keep_tmp:
         shutil.rmtree(tmp_path)
