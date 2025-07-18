@@ -11,8 +11,8 @@ module load python/3.9.0
 source /home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/stabl_uni_clean/bin/activate
 
 python grid_search_model.py \
-    --features_path /home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/copy_ool_test/ina_13OG_final_long_allstims_filtered.csv \
-    --fold_feats_path /home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/results_13OG_XGB_KO_168_filtered_allstim \
-    --results_dir /home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/gridsearch_RMSE_XGB_OT \
+    --features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
+    --fold_feats_path ../Results/results_13OG_XGB_KO_168_filtered_allstim \
+    --results_dir ../Results/onset_test/gridsearch_RMSE_XGB_OT \
     --artificial_type knockoff \
     --model_chosen xgboost
