@@ -12,6 +12,6 @@ source /home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/stabl_uni_cle
 
 python run_regression_cv.py \
     --features_path /home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/ina_13OG_df_168_filtered_allstim_new.csv \
-    --results_dir /home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/ina_13OG_df_168_filtered_no_unstim_new \
+    --results_dir /home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/copy_ool_test/ina_13OG_df_168_filtered_new_no_unstim.csv \
     --artificial_type knockoff \
     --model_chosen xgboost
