@@ -2,6 +2,7 @@ from itertools import product
 import json
 import os
 
+# Create a .json file for each combination of parameters in the grid search
 param_grid = {
     "n_estimators": [300, 500],
     "max_depth": [2, 4, 10],
