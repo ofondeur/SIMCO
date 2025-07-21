@@ -205,4 +205,5 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-Stabl_venv/
+Stabl_venv/CellOT/cross_validation/batchcorrection_2.csv
+CellOT/configs/tasks/
