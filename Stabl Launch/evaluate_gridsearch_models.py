@@ -24,9 +24,7 @@ results = []
 # For each gridsearch run, calculate the RMSE/AUROC/Pearson R
 for run_dir in sorted(glob(os.path.join(root_path, "run_*"))):
     run_id = os.path.basename(run_dir)
-
     try:
-
         preds_path = os.path.join(run_dir, "results_no_treatment", "Training CV", "No_treat", "STABL ALasso", "STABL ALasso predictions.csv")
         if not os.path.exists(preds_path):
             print(f"[WARNING] Missing AUROC preds in {run_dir}")

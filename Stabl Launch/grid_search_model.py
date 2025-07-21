@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+Script to run a gridsearch on the final model (XGB...) using aalready selected features.
+"""
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
@@ -13,14 +16,10 @@ from sklearn.metrics import mean_absolute_error,mean_squared_error
 import shutil
 import itertools
 # Import scikit-learn modules
-from sklearn.model_selection import GroupShuffleSplit, GridSearchCV, RepeatedKFold, LeaveOneGroupOut
-from sklearn.linear_model import Lasso, ElasticNet, LinearRegression
-from sklearn.base import clone
+from sklearn.model_selection import GroupShuffleSplit
 from xgboost import XGBRegressor
 from stabl.cross_validation_drug_vs_dmso import cv_on_existing_feats
-from stabl.stabl import Stabl
 from sklearn.ensemble import RandomForestRegressor
-from stabl.adaptive import ALasso
 from stabl_utils import get_estimators,split_features_by_stim
 
 def main():
@@ -77,6 +76,8 @@ def main():
     df_features = df_features[df_features.index.isin(y.index)]
     stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
     data_dict=split_features_by_stim(df_features, stims)
+    if not data_dict:
+        raise ValueError("No stim-specific features found. Please check your feature names.")
 
     # ---------------------------
     # Define cross-validation splits
