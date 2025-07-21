@@ -36,7 +36,7 @@ for model in "${MODELS[@]}"; do
 #SBATCH --mem=32GB
 
 module load python/3.9.0
-source /home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/stabl_uni_clean/bin/activate
+source Stabl_venv/bin/activate
 
 python run_regression_cv.py \\
     --features_path "${features_path}" \\

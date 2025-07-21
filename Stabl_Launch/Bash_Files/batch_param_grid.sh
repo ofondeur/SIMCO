@@ -9,11 +9,11 @@
 #SBATCH --array=0-95
 
 module load python/3.9.0
-source /home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/stabl_uni_clean/bin/activate
+source Stabl_venv/bin/activate
 
 PARAM_FILE="param_grid_files/params_${SLURM_ARRAY_TASK_ID}.json"
 
-python run_cv_existing_feats.py \
+python ../run_cv_existing_feats.py \
     --notreat_features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
     --fold_feats_path ../Results/results_ina_13OG_final_long_allstims_filtered_xgboost_knockoff_GroupShuffleSplit \
     --results_dir ../Results/comp_9drugs_long/run_${SLURM_ARRAY_TASK_ID} \
