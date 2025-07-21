@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+Script to run a Cross Validation using already selected features.
+"""
 import os
 import sys
 sys.path.insert(0, '/home/groups/gbrice/ptb-drugscreen/ot/cellot/stablVMax')
@@ -68,25 +71,17 @@ def main():
     df_features_no_treat = pd.read_csv(notreat_features_path, index_col=0)
     df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
     df_outcome = df_outcome[df_outcome.index.isin(df_features_no_treat.index)]
-    # Outcome is in the column 'DOS'
     y = df_outcome["DOS"]
 
     df_features_no_treat = df_features_no_treat[df_features_no_treat.index.isin(y.index)]
+
     # ---------------------------
     # Split features by stim
     # ---------------------------
 
-    stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33'] #'Unstim', 
+    stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
 
-
-    no_treat_dict = {}
-    for stim in stims:
-        cols = [col for col in df_features_no_treat.columns if col.endswith(stim)]
-        if cols:
-            no_treat_dict[stim] = df_features_no_treat[cols]
-        else:
-            print(f"Warning: No columns found for stim '{stim}'.")
-        
+    no_treat_dict=split_features_by_stim(df_features_no_treat, stims) 
     if not no_treat_dict:
         raise ValueError("No stim-specific features found. Please check your feature names.")
         
@@ -107,7 +102,6 @@ def main():
         if not treat_dict:
             raise ValueError("No stim-specific features found. Please check your feature names.")
         data_dict[drug]=treat_dict
-
 
     groups = df_features_no_treat.index.to_series().apply(lambda x: x.split('_')[0])
 

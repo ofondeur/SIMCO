@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Script to run a gridsearch on the final model (XGB...) using aalready selected features.
+Script to run a gridsearch on the final model (XGB...) using already selected features.
 """
 import seaborn as sns
 import matplotlib.pyplot as plt
