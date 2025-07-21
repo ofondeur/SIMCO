@@ -71,11 +71,8 @@ args = parser.parse_args()
 features_path = args.features_path
 artificial_type_arg = args.artificial_type
 model_chosen=args.model_chosen
-
-# Define outcome path (can remain hardcoded if it's always the same)
 outcome_path = "./Data/outcome_table_all_pre.csv"
 
-# Define output path dynamically based on inputs
 input_stem = Path(features_path).stem 
 results_path=args.results_dir
 print(f"Input Features: {features_path}")
@@ -93,9 +90,6 @@ df_features = df_features[df_features.index.isin(y.index)]
 # ---------------------------
 # Split features by stim
 # ---------------------------
-# We assume that all feature columns (except patient_id, now the index) end with one of:
-# stims = ['ifna', 'il246', 'unstim', 'lps', 'gmcsf']
-# stims = ['Unstim', 'TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
 
 if "unstim" in input_stem.lower(): # Check if 'unstim' is in the filename stem
     stims = ['Unstim']
@@ -176,12 +170,12 @@ stabl_lasso = Stabl(
     base_estimator=lasso,
     n_bootstraps=1000,
     artificial_type=artificial_type_arg,
-    artificial_proportion=1.0, #artificial_proportion=1.0
+    artificial_proportion=1.0,
     replace=False,
     fdr_threshold_range=np.arange(0.1, 1, 0.01),
     sample_fraction=0.5,
     random_state=42,
-    lambda_grid={"alpha": np.logspace(0, 2, 10)}, #lambda_grid={"alpha": np.logspace(-3, 1, 15)}  np.logspace(0, 2, 10)
+    lambda_grid={"alpha": np.logspace(0, 2, 10)},
     verbose=1
 )
 

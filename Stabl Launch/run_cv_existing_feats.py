@@ -61,27 +61,21 @@ notreat_features_path = args.notreat_features_path
 drug_to_use_list = ['PRA','LPZ','SALPZ','SA','MF','CHT','THF','RIF','MAP']
 artificial_type_arg = args.artificial_type # Store the argument value
 model_chosen=args.model_chosen
-
-# Define outcome path (can remain hardcoded if it's always the same)
 outcome_path = "/home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/outcome_table_all_pre.csv"
 
-# Define output path dynamically based on inputs
-input_stem = Path(notreat_features_path).stem # Get filename without extension
+input_stem = Path(notreat_features_path).stem
 results_path=args.results_dir
 fold_feats_path=args.fold_feats_path
 print(f"Results will be saved to: {results_path}")
 print(f"Using STABL artificial type: {artificial_type_arg}")
 os.makedirs(results_path, exist_ok=True)
 
-
-# Load features and outcomes
 df_features_no_treat = pd.read_csv(notreat_features_path, index_col=0)
 df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
 df_outcome = df_outcome[df_outcome.index.isin(df_features_no_treat.index)]
 # Outcome is in the column 'DOS'
 y = df_outcome["DOS"]
 
-# Ensure the features dataframe contains only patients with available outcomes
 df_features_no_treat = df_features_no_treat[df_features_no_treat.index.isin(y.index)]
 # ---------------------------
 # Split features by stim
@@ -166,12 +160,12 @@ stabl_lasso = Stabl(
     base_estimator=lasso,
     n_bootstraps=1000,
     artificial_type=artificial_type_arg,
-    artificial_proportion=1.0, #artificial_proportion=0.8
+    artificial_proportion=1.0,
     replace=False,
     fdr_threshold_range=np.arange(0.1, 1, 0.01),
     sample_fraction=0.5,
     random_state=42,
-    lambda_grid={"alpha": np.logspace(0, 2, 10)}, #lambda_grid={"alpha": np.logspace(-3, 1, 15)} 
+    lambda_grid={"alpha": np.logspace(0, 2, 10)},
     verbose=1
 )
 
@@ -207,13 +201,6 @@ if args.model_chosen == "xgboost" and args.xgb_config_path is not None:
     xgboost_model = XGBRegressor(**xgb_params, verbosity=0)
     estimators["xgboost"] = xgboost_model
     
-#params={'n_estimators': 500, 'max_depth': 2, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.8, 'gamma': 1, 'reg_alpha': 0, 'reg_lambda': 1}
-#xgboost_model = XGBRegressor(**params, verbosity=0)
-#estimators["xgboost"] = xgboost_model
-# ---------------------------
-# Run multi-omic STABL cross-validation with late fusion
-# ---------------------------
-# We use late fusion (split by stim) and do not use early fusion (set early_fusion to False)
 print("Starting multi-omic STABL CV with late fusion...")
 results_path = os.path.join(args.results_dir, f"results_no_treatment") # Construct unique path
 

@@ -30,13 +30,12 @@ for drug in drug_to_use_list:
 
 
 df_deltas = pd.DataFrame(diffs)
-#df_deltas=df_deltas[df_deltas["Preterm"] == True].copy()
 
 df_deltas['patient_name']=df_deltas['Patient'].str.split('_').str[0]
 
 df_average_delta = df_deltas.groupby(['patient_name', 'Drug'], as_index=False)['Delta'].mean()
 df_average_delta['Preterm']=df_average_delta['patient_name'].isin(preterm_patients_name)
-#df_deltas=df_average_delta.copy()
+
 df_deltas['Drug'] = pd.Categorical(df_deltas['Drug'], categories=sorted(df_deltas['Drug'].unique()), ordered=True)
 plt.figure(figsize=(8, 6))
 
