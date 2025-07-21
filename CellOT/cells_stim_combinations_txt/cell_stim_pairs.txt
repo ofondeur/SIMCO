@@ -1,0 +1,45 @@
+TNFa	Granulocytes (CD45-CD66+)
+TNFa	B-Cells (CD19+CD3-)
+TNFa	Classical Monocytes (CD14+CD16-)
+TNFa	MDSCs (lin-CD11b-CD14+HLADRlo)
+TNFa	mDCs (CD11c+HLADR+)
+TNFa	pDCs(CD123+HLADR+)
+TNFa	Intermediate Monocytes (CD14+CD16+)
+TNFa	Non-classical Monocytes (CD14-CD16+)
+TNFa	CD56+CD16- NK Cells
+TNFa	CD56loCD16+NK Cells
+TNFa	NK Cells (CD7+)
+TNFa	CD4 T-Cells
+TNFa	Tregs (CD25+FoxP3+)
+TNFa	CD8 T-Cells
+TNFa	CD8-CD4- T-Cells
+P._gingivalis	Granulocytes (CD45-CD66+)
+P._gingivalis	B-Cells (CD19+CD3-)
+P._gingivalis	Classical Monocytes (CD14+CD16-)
+P._gingivalis	MDSCs (lin-CD11b-CD14+HLADRlo)
+P._gingivalis	mDCs (CD11c+HLADR+)
+P._gingivalis	pDCs(CD123+HLADR+)
+P._gingivalis	Intermediate Monocytes (CD14+CD16+)
+P._gingivalis	Non-classical Monocytes (CD14-CD16+)
+P._gingivalis	CD56+CD16- NK Cells
+P._gingivalis	CD56loCD16+NK Cells
+P._gingivalis	NK Cells (CD7+)
+P._gingivalis	CD4 T-Cells
+P._gingivalis	Tregs (CD25+FoxP3+)
+P._gingivalis	CD8 T-Cells
+P._gingivalis	CD8-CD4- T-Cells
+IFNa	Granulocytes (CD45-CD66+)
+IFNa	B-Cells (CD19+CD3-)
+IFNa	Classical Monocytes (CD14+CD16-)
+IFNa	MDSCs (lin-CD11b-CD14+HLADRlo)
+IFNa	mDCs (CD11c+HLADR+)
+IFNa	pDCs(CD123+HLADR+)
+IFNa	Intermediate Monocytes (CD14+CD16+)
+IFNa	Non-classical Monocytes (CD14-CD16+)
+IFNa	CD56+CD16- NK Cells
+IFNa	CD56loCD16+NK Cells
+IFNa	NK Cells (CD7+)
+IFNa	CD4 T-Cells
+IFNa	Tregs (CD25+FoxP3+)
+IFNa	CD8 T-Cells
+IFNa	CD8-CD4- T-Cells

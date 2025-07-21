@@ -1,0 +1,11 @@
+Found 4956 Unstim FCS files.
+Checking representative file...
+Representative file check passed.
+
+Successfully processed 4956 files.
+All expected cell types were observed in processed files.
+Concatenating AnnData objects (NO deduplication)...
+Final concatenated AnnData shape: 71265609 cells x 31 vars.
+Skipped deduplication step intentionally.
+Saved simplified AnnData to /home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ool_by_patient/ool_Unstim_final.h5ad
+Created ool_samples_final.txt and features_final.txt in /home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ool_by_patient

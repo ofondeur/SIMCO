@@ -15,7 +15,7 @@ Results (including scores, plots and selected features) are saved to:
 
 import os
 import sys
-sys.path.insert(0, '../cellot/stablVMax')
+sys.path.insert(0, '../stablVMax')
 from pathlib import Path
 import numpy as np
 import pandas as pd

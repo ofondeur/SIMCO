@@ -1,0 +1,6 @@
+[INFO] Starting predictions
+The categories of the anndata before the source, target split is: stim ['Unstim'], drugs ['DMSO'], cells ['Bcells'], with a shape of (7523, 13)
+[INFO] Done for Unstim, Bcells, 99_G1
+The categories of the anndata before the source, target split is: stim ['Unstim'], drugs ['DMSO'], cells ['CD4Tcm'], with a shape of (10301, 13)
+[INFO] Done for Unstim, CD4Tcm, 99_G1
+The categories of the anndata before the source, target split is: stim [], drugs [], cells [], with a shape of (0, 13)

@@ -4,7 +4,7 @@ Script to run a Cross Validation using already selected features.
 """
 import os
 import sys
-sys.path.insert(0, '/home/groups/gbrice/ptb-drugscreen/ot/cellot/stablVMax')
+sys.path.insert(0, '../stablVMax')
 from pathlib import Path
 import numpy as np
 import pandas as pd

@@ -1,5 +1,6 @@
 # stabl_utils.py
-
+import sys
+sys.path.insert(0, '../stablVMax')
 import os
 import numpy as np
 import pandas as pd

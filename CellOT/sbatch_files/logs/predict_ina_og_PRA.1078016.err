@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/make_prediction/predict_ina_og.py", line 187, in <module>
+    row = predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, patient)
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/make_prediction/predict_ina_og.py", line 92, in predict_per_patient
+    anndata = load_patient_anndata(
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/make_prediction/predict_ina_og.py", line 49, in load_patient_anndata
+    adata = ad.read_h5ad(data_path, backed='r')  # accès sur disque
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/lib/python3.9/site-packages/anndata/_io/h5ad.py", line 212, in read_h5ad
+    return read_h5ad_backed(filename, mode)
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/lib/python3.9/site-packages/anndata/_io/h5ad.py", line 143, in read_h5ad_backed
+    f = h5py.File(filename, mode)
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/lib/python3.9/site-packages/h5py/_hl/files.py", line 564, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+  File "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/lib/python3.9/site-packages/h5py/_hl/files.py", line 238, in make_fid
+    fid = h5f.open(name, flags, fapl=fapl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 102, in h5py.h5f.open
+BlockingIOError: [Errno 11] Unable to synchronously open file (unable to lock file, errno = 11, error message = 'Resource temporarily unavailable')
