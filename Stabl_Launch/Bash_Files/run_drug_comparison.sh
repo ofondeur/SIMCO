@@ -8,9 +8,9 @@
 #SBATCH --mem=32GB
 
 module load python/3.9.0
-source Stabl_venv/bin/activate
+source ../../Stabl_venv/bin/activate
 
-python run_cv_existing_feats.py \
+python ../run_cv_existing_feats.py \
     --notreat_features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
     --fold_feats_path ../Results/results_ina_13OG_final_long_allstims_filtered_xgboost_knockoff_GroupShuffleSplit \
     --results_dir ../Results/comp_9drugs_long \

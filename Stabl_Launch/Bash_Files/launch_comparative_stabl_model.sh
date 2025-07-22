@@ -36,9 +36,9 @@ for model in "${MODELS[@]}"; do
 #SBATCH --mem=32GB
 
 module load python/3.9.0
-source Stabl_venv/bin/activate
+source ../../Stabl_venv/bin/activate
 
-python run_regression_cv.py \\
+python ../run_regression_cv.py \\
     --features_path "${features_path}" \\
     --results_dir "${result_dir}" \\
     --artificial_type "${artificial}" \\

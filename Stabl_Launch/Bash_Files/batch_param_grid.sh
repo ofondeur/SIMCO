@@ -9,7 +9,7 @@
 #SBATCH --array=0-95
 
 module load python/3.9.0
-source Stabl_venv/bin/activate
+source ../../Stabl_venv/bin/activate
 
 PARAM_FILE="param_grid_files/params_${SLURM_ARRAY_TASK_ID}.json"
 
