@@ -13,7 +13,7 @@ def compute_correlations(df, group_cols):
     grouped = df.groupby(group_cols + ["method"])
     for group, group_df in grouped:
         if group_df["true"].nunique() <= 1 or group_df["pred"].nunique() <= 1:
-            continue  # corr non définie si une des variables est constante
+            continue
         spearman_corr = spearmanr(group_df["true"], group_df["pred"]).correlation
         pearson_corr = pearsonr(group_df["true"], group_df["pred"])[0]
         row = dict(zip(group_cols, group))

@@ -16,7 +16,7 @@ def predict_from_unstim_data(result_path, unstim_data_path, output_path):
     (_, g), _, _ = load(config, restore=chkpt)
     g.eval()
 
-    # load the data to predict and filter with the interzsting markers
+    # load the data to predict and filter with the interesting markers
     unstim_anndata_to_predict = ad.read(unstim_data_path)
     features = ['149Sm_pCREB', '167Er_pERK', '164Dy_IkB', '159Tb_pMAPKAPK2', '166Er_pNFkB', '151Eu_pp38','155Gd_pS6', '153Eu_pSTAT1', '154Sm_pSTAT3', '150Nd_pSTAT5', '168Er_pSTAT6', '174Yb_HLADR', '169Tm_CD25']
 

@@ -145,7 +145,7 @@ for drug_used in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']
                     print(f"[WARN] No row for {stim}, {cell_type}, {patient}",flush=True)
                 gc.collect()
     
-            if len(patient_row) > 1:  # on a prédit au moins une cellule pour ce patient
+            if len(patient_row) > 1:
                 if first_write:
                     f.write(','.join(patient_row.keys()) + '\n')
                     first_write = False

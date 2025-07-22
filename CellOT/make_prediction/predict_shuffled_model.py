@@ -80,13 +80,10 @@ def predict_from_unstim_data(result_path, unstim_data_path, output_path,stim,tes
         concatenated.write(output_path)
     return
 
-model='shuffled_20marks' # choose among 'olivier', 'peter', 'original','all_markers' ,'39m_OG'
-
-# read the fold info to have the features and test patients per feature
-
+model='shuffled_20marks'
 FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
 fold_info = defaultdict(lambda: defaultdict(dict)) # Structure: fold_info[stim][sanitized_celltype][fold_index] = [test_patient1, ...]
-stim_celltype_pairs_in_folds = set() # Keep track of (stim, original_celltype) pairs processed
+stim_celltype_pairs_in_folds = set()
 
 try:
     with open(FOLD_INFO_FILE, 'r') as f:

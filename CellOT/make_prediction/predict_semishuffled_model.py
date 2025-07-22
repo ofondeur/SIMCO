@@ -63,7 +63,7 @@ def predict_from_unstim_data(result_path, unstim_data_path, output_path,stim,tes
     predicted.var_names=features_evaluation # rename the prediction markers, so that the markers' name are the same as the true stim data (target)
     original_anndata = anndata_to_predict[anndata_to_predict.obs['stim'] == stim].copy()
 
-    original_anndata.obs["state"] = "true_corrected" # to know if this is the prediction or original data
+    original_anndata.obs["state"] = "true_corrected"
     
     original_anndata=original_anndata[:,features_evaluation] 
     
@@ -82,13 +82,11 @@ def predict_from_unstim_data(result_path, unstim_data_path, output_path,stim,tes
         #concatenated.write(output_path)
     return
 
-model='different_IO' # choose among 'olivier', 'peter', 'original','all_markers' ,'39m_OG'
-
-# read the fold info to have the features and test patients per feature
+model='different_IO'
 
 FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
 fold_info = defaultdict(lambda: defaultdict(dict)) # Structure: fold_info[stim][sanitized_celltype][fold_index] = [test_patient1, ...]
-stim_celltype_pairs_in_folds = set() # Keep track of (stim, original_celltype) pairs processed
+stim_celltype_pairs_in_folds = set() 
 
 try:
     with open(FOLD_INFO_FILE, 'r') as f:
@@ -97,7 +95,7 @@ try:
         lines = lines[1:][::-1]  
         for line in lines:
             parts = line.strip().split(',')
-            if len(parts) < 4: continue # stim, sanitized, original, fold, patient1...
+            if len(parts) < 4: continue 
             stim, sanitized_ct, original_ct, fold_idx_str = parts[:4]
             test_patients = parts[4:]
             try:
@@ -131,7 +129,6 @@ for stim in fold_info:
                 output_path = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}/{stim}/{sanitized_celltype}/model-{stim}_{sanitized_celltype}_fold{fold_number}/pred_CV_{model}.h5ad"
                 fold_path = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}/{stim}/{sanitized_celltype}/model-{stim}_{sanitized_celltype}_fold{fold_number}"
                 
-                #if (not os.path.exists(output_path)) and (os.path.exists(result_path)) and (os.path.exists(fold_path)):
                 if (os.path.exists(result_path)) and (os.path.exists(fold_path)):
                     predict_from_unstim_data(result_path, unstim_data_path, output_path, stim,test_patients)
         print(f"[INFO] Predicted {sanitized_celltype} for {stim}")
