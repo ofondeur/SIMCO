@@ -41,9 +41,7 @@ def concatenate_2conditions_multiple_data(path_stim_list,stim_name,path_unstim_l
         comb_stim_anndata.obs.reset_index(drop=True, inplace=True)
         stim_anndata.obs.reset_index(drop=True, inplace=True)
 
-        # Concaténer les deux objets AnnData
         comb_stim_anndata = ad.concat([comb_stim_anndata, stim_anndata], join='outer', axis=0)
-        #comb_stim_anndata = comb_stim_anndata.concatenate(stim_anndata)
         
     for path_unstim in path_unstim_list[1:]:
         if path_unstim[1]:
@@ -51,12 +49,12 @@ def concatenate_2conditions_multiple_data(path_stim_list,stim_name,path_unstim_l
         else:
             unstim_anndata = load_data_fcs(path_unstim[0],unstim_name)
         comb_unstim_anndata = ad.concat([comb_unstim_anndata, unstim_anndata], join='outer', axis=0)
-        #comb_unstim_anndata = comb_unstim_anndata.concatenate(unstim_anndata)
+        
     comb_stim_anndata.var = comb_stim_anndata.var.astype(str)
     comb_unstim_anndata.var = comb_unstim_anndata.var.astype(str)
 
     combined_anndata = ad.concat([comb_unstim_anndata, comb_stim_anndata], join='outer', axis=0)
-    #combined_anndata.write(outdir_path)
+    
     directory=os.path.dirname(outdir_path)
     os.makedirs(directory, exist_ok=True)
     combined_anndata.write_h5ad(outdir_path)
@@ -87,7 +85,6 @@ def create_list_of_paths2(
     return paths_list
 
 ptb_stim_list=['TNFa','LPS','IFNa','PI','GMCSF','IL33','IL246']
-#perio_cell_list=['Granulocytes (CD45-CD66+)','B-Cells (CD19+CD3-)','Classical Monocytes (CD14+CD16-)','MDSCs (lin-CD11b-CD14+HLADRlo)','mDCs (CD11c+HLADR+)','pDCs(CD123+HLADR+)','Intermediate Monocytes (CD14+CD16+)','Non-classical Monocytes (CD14-CD16+)','CD56+CD16- NK Cells','CD56loCD16+NK Cells','NK Cells (CD7+)','CD4 T-Cells','Tregs (CD25+FoxP3+)','CD8 T-Cells','CD8-CD4- T-Cells']
 ptb_cell_list=['Bcells', 'CD4Tcm.', 'CD4Tcm CCR2+', 'CD4Teff', 'CD4Tem.',
        'CD4Tem CCR2+', 'CD4Tnaive', 'CD4Tregs', 'CD4negCD8negTcells',
        'CD56hiCD16negNK', 'CD56loCD16posNK', 'CD8Tcells Th1', 'CD8Tcm.',

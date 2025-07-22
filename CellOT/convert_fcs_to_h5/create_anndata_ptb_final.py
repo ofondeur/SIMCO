@@ -17,15 +17,13 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 EXPECTED_PATIENTS = {"PV01", "PV02", "PV03", "PV04","PV05","PV06", "PV07", "PV08", "PV09","PV10","PV11", "HV04", "HV05", "HV06", "HV07", "HV08","HV09", "HV10", "HV11"}
 EXPECTED_DRUGS = {"CHT", "DMSO1", "DMSO2", "DMSO3", "LPZ", "MAP", "MF", "PRA", "RIF", "SA", "SALPZ", "THF"}
 EXPECTED_STIMS = {"Unstim", "TNFa", "LPS", "IL246", "IFNa", "GMCSF", "PI", "IL33"}
-EXPECTED_CELL_TYPES = { # Keep this list for validation
+EXPECTED_CELL_TYPES = {
     "Granulocytes", "Bcells", "cMCs", "MDSCs", "mDCs", "pDCs", "intMCs", "ncMCs",
     "CD56hiCD16negNK", "CD56loCD16posNK", "NK cells CD11c-", "NK cells CD11c+",
     "CD4Tnaive", "CD4Teff", "CD4Tcm", "CD4Tcm CCR2+", "CD4Tem", "CD4Tem CCR2+",
     "CD4Tregs", "CD8Tcm", "CD8Tcm CCR2+", "CD8Tem", "CD8Tem CCR2+",
     "CD8Tnaive", "CD8Teff", "CD8Tcells Th1", "CD4negCD8negTcells", "NKT"
 }
-
-# REMOVED: SUBCELL_TYPE_MAP definition is no longer needed
 
 # ===== Expected markers =====
 FUNCTIONAL_MARKERS = [
@@ -62,15 +60,12 @@ def normalize_marker(raw_marker):
     if marker not in EXPECTED_MARKERS:
         marker = marker.upper()
     if marker not in EXPECTED_MARKERS:
-        # Keep raising error for truly unexpected markers
         raise AssertionError(f"Unrecognized marker: {raw_marker} -> {marker}")
     return marker
 
 def arcsinh_transform(X, cofactor=5):
-    # Apply element-wise using pandas .apply (works on Series/DataFrame)
     return X.apply(lambda x: np.arcsinh(pd.to_numeric(x, errors='coerce') / cofactor))
 
-# Parse filename using expected pattern.
 FILENAME_RE = re.compile(
     r"^PTB_(?P<patient>[^_]+)_(?P<drug>[A-Za-z0-9]+)_(?P<stim>[A-Za-z0-9]+)\s*-\s*(?P<cell_type>.+)\.fcs$"
 )
@@ -82,12 +77,9 @@ def parse_filename(filename):
     patient = m.group("patient")
     drug = m.group("drug")
     stim = m.group("stim")
-    cell_type = m.group("cell_type").strip() # Use cell type directly
-    # Normalize Tregs if needed (though not in PTB EXPECTED_CELL_TYPES?)
-    # if cell_type == "Tregs": cell_type = "CD4Tregs"
+    cell_type = m.group("cell_type").strip()
     return patient, drug, stim, cell_type
 
-# Process one FCS file and return an AnnData (Simplified)
 def process_fcs_file_simplified(file_path, patient, drug, stim, cell_type):
     meta, data = fcsparser.parse(file_path, reformat_meta=True)
 
@@ -99,37 +91,27 @@ def process_fcs_file_simplified(file_path, patient, drug, stim, cell_type):
             if new_name in EXPECTED_MARKERS:
                 new_cols[col] = new_name
                 marker_cols_found.append(new_name)
-        except AssertionError: # Ignore columns that don't normalize to an expected marker
+        except AssertionError:
             continue
 
     if not new_cols:
         print(f"Warning: No expected markers found in file {file_path}. Skipping file.")
-        return None # Return None if no data columns are useful
-
-    # Subset and rename based on found markers
+        return None 
     data_subset = data[list(new_cols.keys())].rename(columns=new_cols)
 
-    # Apply arcsinh transformation using pandas .apply for efficiency
     data_transformed = arcsinh_transform(data_subset, cofactor=5)
 
-    # Create simplified obs DataFrame
     obs = pd.DataFrame({
         "patient": [patient] * data_transformed.shape[0],
         "stim": [stim] * data_transformed.shape[0],
         "drug": [drug] * data_transformed.shape[0],
-        # Assign the cell type directly from the filename argument
         "cell_type": [cell_type] * data_transformed.shape[0],
     })
-
-    # Create AnnData object
     adata = ad.AnnData(X=data_transformed.values, obs=obs, var=pd.DataFrame(index=data_transformed.columns))
     return adata
 
 # ===== Main processing =====
 def main():
-    # --- Representative file check (optional but good practice) ---
-    # (Keep this section as is, using the original process_fcs_file for the check if desired,
-    # or update it to use process_fcs_file_simplified)
     representative_files = [f for f in os.listdir(RAW_DIR) if f.lower().endswith(".fcs")]
     if not representative_files:
         sys.stderr.write("No FCS files found in RAW_DIR.\n"); sys.exit(1)
@@ -137,7 +119,7 @@ def main():
     rep_file = os.path.join(RAW_DIR, representative_files[0])
     try:
         patient, drug, stim, cell_type = parse_filename(representative_files[0])
-        # Using the simplified processor for the check too
+        
         rep_adata = process_fcs_file_simplified(rep_file, patient, drug, stim, cell_type)
         if rep_adata is None: raise AssertionError("Rep file processing returned None")
     except Exception as e:
@@ -145,7 +127,7 @@ def main():
     if not EXPECTED_MARKERS.issubset(set(rep_adata.var_names)):
         missing = EXPECTED_MARKERS - set(rep_adata.var_names)
         print(f"Warning: Representative file missing markers: {missing} (Check source FCS or METAL_MAPPING)")
-        # Decide if this should be fatal: raise AssertionError(...)
+        
     else:
         print("Representative file check passed (found all expected markers).")
 
@@ -155,9 +137,7 @@ def main():
     expected_file_count = len(EXPECTED_PATIENTS) * len(EXPECTED_DRUGS) * len(EXPECTED_STIMS) * len(EXPECTED_CELL_TYPES)
     print(f"Found {len(all_files)} FCS files. Expecting {expected_file_count}.")
     if len(all_files) != expected_file_count:
-        print(f"Warning: File count mismatch.") # Changed to warning
-
-    # Build a dictionary grouping AnnData per (stim,drug)
+        print(f"Warning: File count mismatch.")
     group_dict = {}
     processed_combinations = set()
 
@@ -177,28 +157,23 @@ def main():
             # Use the simplified processor
             adata = process_fcs_file_simplified(file_path, patient, drug, stim, cell_type)
 
-            if adata is not None: # Only add if processing was successful
-                # Group by unified drug name
+            if adata is not None:
                 group_drug = drug  # group_drug = "DMSO" if drug.startswith("DMSO") else drug (if concat all the DMSo together)
                 key = (cell_type,(cell_type,patient[:2]))
                 group_dict.setdefault(key, []).append(adata)
 
-        except AssertionError as e: # Catch parsing errors
+        except AssertionError as e:
             print(f"Warning: Skipping file {filename} - {e}")
             continue
-        except Exception as e: # Catch other processing errors
+        except Exception as e:
              print(f"Warning: Error processing file {filename} - {e}")
              continue
 
-    # Check for missing combinations (optional)
     expected_combinations = set((p, dr, s, ct) for p in EXPECTED_PATIENTS for dr in EXPECTED_DRUGS for s in EXPECTED_STIMS for ct in EXPECTED_CELL_TYPES)
     missing = expected_combinations - processed_combinations
     if missing:
         print(f"\nWarning: {len(missing)} expected combinations seem to be missing or were skipped:")
-        # for combo in sorted(list(missing))[:10]: print(f"  - {combo}") # Print a few examples
-        # Decide if this should be fatal: raise AssertionError(...)
-
-    # Concatenate AnnData objects for each group, NO deduplication
+        
     print("\nConcatenating AnnData objects per group (NO deduplication)...")
     for (cell_type,condition),adata_list in tqdm(group_dict.items(), desc="Concatenating groups"):
         if not adata_list:
@@ -209,7 +184,6 @@ def main():
         combined_final = ad.concat(adata_list, join='outer', axis=0, label=f"{cell_type}_{condition}")
         print(f"Group {cell_type} and {condition}: Concatenated {len(adata_list)} files -> {combined_final.n_obs} cells.")
 
-        # --- REMOVED DEDUPLICATION BLOCK ---
         print("Skipped deduplication step intentionally.")
 
         out_filename = f"{cell_type}_{condition}.h5ad"
