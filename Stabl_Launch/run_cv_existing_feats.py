@@ -59,7 +59,7 @@ def main():
     drug_to_use_list = ['PRA','LPZ','SALPZ','SA','MF','CHT','THF','RIF','MAP']
     artificial_type_arg = args.artificial_type # Store the argument value
     model_chosen=args.model_chosen
-    outcome_path = "/home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/outcome_table_all_pre.csv"
+    outcome_path = "../Data/outcome_table_all_pre.csv"
 
     input_stem = Path(notreat_features_path).stem
     results_path=args.results_dir

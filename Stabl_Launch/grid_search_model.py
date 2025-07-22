@@ -56,7 +56,7 @@ def main():
     features_path = args.features_path
     artificial_type_arg = args.artificial_type
     model_chosen=args.model_chosen
-    outcome_path = "/home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/outcome_table_all_pre.csv"
+    outcome_path = "../Data/outcome_table_all_pre.csv"
 
 
     results_path=args.results_dir

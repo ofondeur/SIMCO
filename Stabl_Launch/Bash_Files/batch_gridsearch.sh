@@ -8,9 +8,9 @@
 #SBATCH --mem=32GB
 
 module load python/3.9.0
-source Stabl_venv/bin/activate
+source ../../Stabl_venv/bin/activate
 
-python grid_search_model.py \
+python ../grid_search_model.py \
     --features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
     --fold_feats_path ../Results/results_13OG_XGB_KO_168_filtered_allstim \
     --results_dir ../Results/onset_test/gridsearch_RMSE_XGB_OT \

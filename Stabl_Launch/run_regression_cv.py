@@ -15,7 +15,8 @@ Results (including scores, plots and selected features) are saved to:
 
 import os
 import sys
-sys.path.insert(0, '../stablVMax')
+from stabl_utils import get_estimators,split_features_by_stim
+sys.path.insert(0, '../Stabl')
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -26,7 +27,6 @@ from stabl.multi_omic_pipelines import multi_omic_stabl_cv
 from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 
-from stabl_utils import get_estimators,split_features_by_stim
 
 def main():
     parser = argparse.ArgumentParser(description="Run STABL Regression CV with configurable inputs.")
@@ -58,7 +58,7 @@ def main():
     features_path = args.features_path
     artificial_type_arg = args.artificial_type
     model_chosen=args.model_chosen
-    outcome_path = "./Data/outcome_table_all_pre.csv"
+    outcome_path = "../Data/outcome_table_all_pre.csv"
 
     input_stem = Path(features_path).stem 
     results_path=args.results_dir

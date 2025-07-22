@@ -8,7 +8,8 @@
 #SBATCH --mem=32GB
 
 module load python/3.9.0
-source Stabl_venv/bin/activate
+
+source ../../Stabl_venv/bin/activate
 
 python ../run_regression_cv.py \
     --features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
