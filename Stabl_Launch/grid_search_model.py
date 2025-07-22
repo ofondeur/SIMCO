@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.insert(0, '../stablVMax')
+sys.path.insert(0, '../Stabl')
 from pathlib import Path
 import numpy as np
 import pandas as pd

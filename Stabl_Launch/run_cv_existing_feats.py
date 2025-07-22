@@ -17,9 +17,6 @@ from sklearn.model_selection import GroupShuffleSplit
 
 from stabl.cross_validation_drug_vs_dmso import cv_drug_vs_dmso
 from stabl_utils import get_estimators,split_features_by_stim
-# ---------------------------
-# Data loading and preparation
-# ---------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Run STABL Regression CV with configurable inputs.")
@@ -82,6 +79,7 @@ def main():
     stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
 
     no_treat_dict=split_features_by_stim(df_features_no_treat, stims) 
+
     if not no_treat_dict:
         raise ValueError("No stim-specific features found. Please check your feature names.")
         
@@ -91,7 +89,7 @@ def main():
         if drug not in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']:
             print(f"[WARNING] Skipping drug {drug}, name is not usual")
             continue
-        path_features_drug=f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/ina_13OG_{drug}_untreated_unstim.csv"
+        path_features_drug=f"./Data/Drug_data/ina_13OG_{drug}_untreated_unstim.csv"
         if not os.path.exists(path_features_drug):
             print(f"[WARNING] Skipping drug {drug}, path {path_features_drug} not found")
             continue
@@ -107,8 +105,7 @@ def main():
 
     outer_cv = GroupShuffleSplit(n_splits=100, test_size=0.2, random_state=42)
 
-    #outer_cv = LeaveOneGroupOut()
-    print(f"INFO: Using LeaveOneGroupOut for outer CV ({groups.nunique()} groups/folds expected).") # Optional: Add print statement
+    print(f"INFO: Using LeaveOneGroupOut for outer CV ({groups.nunique()} groups/folds expected).")
     estimators = get_estimators(artificial_type_arg)
     models = [
         "STABL Lasso",
@@ -122,7 +119,7 @@ def main():
         estimators["xgboost"] = xgboost_model
         
     print("Starting multi-omic STABL CV with late fusion...")
-    results_path = os.path.join(args.results_dir, f"results_no_treatment") # Construct unique path
+    results_path = os.path.join(args.results_dir, f"results_no_treatment")
 
     predictions_dict = cv_drug_vs_dmso(
         data_dict=data_dict,
