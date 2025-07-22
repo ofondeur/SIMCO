@@ -10,7 +10,6 @@
 
 module load python/3.9.0
 
-# --- IMPORTANT: Verify your virtual environment path ---
 VENV_PATH="/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/bin/activate"
 if [ -f "$VENV_PATH" ]; then
     source "$VENV_PATH"
@@ -18,45 +17,37 @@ else
     echo "ERROR: Virtual environment not found at $VENV_PATH"
     exit 1
 fi
-# Check if python is working
-python -c "import sys; print(f'Python executable: {sys.executable}')"
 
-model='different_IO' # choose among 'olivier', 'peter', 'original','all_markers' 
+model='different_IO' 
 
-# --- Directory Definitions ---
 BASE_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype"
 RESULTS_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_${model}_batchcorr"
-JOB_LIST_FILE="${BASE_DIR}/valid_jobs.txt" #<-- Path to job list created by pre-script
-PATIENT_FILE="${BASE_DIR}/patients_HV.txt" #<-- Path to patient list, here only HV
+JOB_LIST_FILE="${BASE_DIR}/valid_jobs.txt"
+PATIENT_FILE="${BASE_DIR}/patients_HV.txt"
 CONFIG_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/configs/tasks"
 mkdir -p "${RESULTS_DIR}"
 
-# --- Read Job Assignment ---
-# Read the specific line corresponding to the SLURM task ID (array index + 1)
-LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1)) # Calculate line number first
-JOB_DEF=$(sed -n "${LINE_NUM}p" "${JOB_LIST_FILE}") # Use the calculated line number
+LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1))
+JOB_DEF=$(sed -n "${LINE_NUM}p" "${JOB_LIST_FILE}")
 # --- CHANGE END ---
 if [ -z "$JOB_DEF" ]; then
     echo "ERROR: Could not read job definition for task ID ${SLURM_ARRAY_TASK_ID} (line ${LINE_NUM}) from ${JOB_LIST_FILE}"
     exit 1
 fi
-# --- Read three fields ---
 IFS=',' read -r stim sanitized_celltype original_celltype <<< "${JOB_DEF}"
-# Note: celltype read from the file should already be sanitized
+
 
 echo "======================================================"
 echo "SLURM Job ID: ${SLURM_JOB_ID}, Task ID: ${SLURM_ARRAY_TASK_ID}"
 echo "Assigned Stim: ${stim}"
 echo "Assigned Cell Type (Sanitized): ${sanitized_celltype}"
-echo "Assigned Cell Type (Original): ${original_celltype}" # Print original too
+echo "Assigned Cell Type (Original): ${original_celltype}"
 echo "======================================================"
 
-# --- Read Patients and Define Folds ---
 if [ ! -f "${PATIENT_FILE}" ]; then
   echo "ERROR: Patient file ${PATIENT_FILE} not found!" >&2
   exit 1
 fi
-#readarray -t all_patients < "${PATIENT_FILE}"
 readarray -t all_patients < <(shuf "${PATIENT_FILE}")
 
 n_patients=${#all_patients[@]}
@@ -68,26 +59,16 @@ if [ $((n_patients % n_folds)) -ne 0 ]; then
     echo "WARNING: Number of patients (${n_patients}) is not perfectly divisible by n_folds (${n_folds}). Folds might be slightly uneven."
 fi
 
-# Create folds (simple sequential assignment), the commented version doesn t shuffle the patients
 declare -a folds
-#for (( i=0; i<${n_patients}; i++ )); do
-    #fold_idx=$((i % n_folds))
-    #folds[$fold_idx]+="${all_patients[$i]} " # Add patient to fold string with space separator
-#done
-
 for (( i=0; i<n_folds; i++ )); do
     start_idx=$(( i * patients_per_fold ))
     folds[i]="${all_patients[@]:start_idx:patients_per_fold}"
 done
 
-# Trim trailing spaces
 for (( i=0; i<${n_folds}; i++ )); do
     folds[$i]=$(echo ${folds[$i]} | sed 's/ *$//g')
     echo "Fold ${i} patients: ${folds[$i]}"
 done
-
-# --- Define Dynamic Feature File Path ---
-# Based on stim and celltype to ensure uniqueness
 
 # --- Train FULL Model ---
 echo "--- Training FULL Model ---"
@@ -141,6 +122,6 @@ for k in $(seq 0 $((n_folds - 1))); do
         echo "ERROR: Fold ${k} training failed."
     fi
 
-done # End of CV fold loop
+done
 
 echo "Job for Stim=${stim}, CellType=${celltype} completed."
