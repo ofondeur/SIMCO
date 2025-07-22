@@ -228,20 +228,6 @@ def main():
 
                 del df_all, df_pred, baseline_medians, pred_medians, merged, pred_final
                 gc.collect()
-        
-        #baseline_all = pd.concat(list(baseline_store.values()), ignore_index=True)
-        #baseline_all = baseline_all.drop_duplicates(subset=["sampleID", "cell_type", "marker", "stim"])
-
-        #if pred_rows:
-            #pred_all = pd.concat(pred_rows, ignore_index=True)
-        #else:
-            #pred_all = pd.DataFrame(columns=["sampleID", "cell_type", "marker", "stim", "median", "mmd"])
-
-        #final_df = pd.concat([baseline_all, pred_all], ignore_index=True)
-        #final_df = final_df.rename(columns={"cell_type": "population"})
-        #final_df = final_df[["sampleID", "population", "marker", "stim", "median", "mmd"]]
-        #out_path = os.path.join(out_dir, f"{cohort}_{stim}_predicted_transformed.csv")
-        #final_df.to_csv(out_path, index=False)
         print(f"Finished all folds for cohort '{cohort}', stim '{stim}'")
 
 

@@ -2,18 +2,15 @@
 import os
 import pandas as pd
 
-# ===== Configuration =====
 KNOWLEDGE_TABLE_PATH = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cross_validation/PenMatrix_HV.csv"
 OUTPUT_TXT_PATH = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/job_list_all_drugs.txt"
 DRUG_LIST = ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']
 
-# ===== Sanitize Function =====
 def sanitize_name(name):
     name = str(name)
     name = name.replace(' ', '_').replace('/', '-').replace('+', 'pos').replace('-', 'neg')
     return name
 
-# ===== Read Cell Types =====
 try:
     knowledge_df = pd.read_csv(KNOWLEDGE_TABLE_PATH)
 except FileNotFoundError:
@@ -26,7 +23,6 @@ if 'population' not in knowledge_df.columns:
 
 unique_celltypes = sorted(knowledge_df['population'].dropna().unique())
 
-# ===== Generate and Save Combinations =====
 with open(OUTPUT_TXT_PATH, 'w') as f:
     for drug in DRUG_LIST:
         for celltype in unique_celltypes:
