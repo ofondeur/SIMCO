@@ -138,7 +138,6 @@ with open(FOLD_INFO_FILE, 'r') as f:
         stim, sanitized_ct, original_ct, fold_idx, *patients = parts
         fold_info[stim][sanitized_ct][int(fold_idx)] = patients
 
-#unstim_data_path = "/home/groups/gbrice/ptb-drugscreen/ot/cellot_pheno/cells_combined/anndatas/ool_simplified/ool_Unstim.h5ad"
 MODEL_BASE_DIR = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}"
 
 print(f"[INFO] Starting predictions")
@@ -178,14 +177,14 @@ with open(csv_path, "a") as f:
 
                 row = predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, patient)
                 if row:
-                    del row["Individual"]  # on l'a déjà dans patient_row
+                    del row["Individual"]
                     patient_row.update(row)
                     print(f"[INFO] Done for {stim}, {cell_type}, {patient}")
                 else:
                     print(f"[WARN] No row for {stim}, {cell_type}, {patient}")
                 gc.collect()
 
-        if len(patient_row) > 1:  # on a prédit au moins une cellule pour ce patient
+        if len(patient_row) > 1:
             if first_write:
                 f.write(','.join(patient_row.keys()) + '\n')
                 first_write = False

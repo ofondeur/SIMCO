@@ -6,8 +6,6 @@ from cellot.data.cell import read_list
 from cellot.data.cell import AnnDataDataset
 from cellot.models.cellot import load_networks
 from torch.utils.data import DataLoader
-from cellot.data.utils import cast_loader_to_iterator
-from cellot.utils.helpers import nest_dict, flat_dict
 from scipy import sparse
 from collections import defaultdict
 from pathlib import Path
@@ -71,11 +69,11 @@ def predict_from_unstim_data(result_path, unstim_data_path, output_path,stim,tes
         concatenated.write(output_path)
     return
 
-model='original_20marks' # choose among 'olivier', 'peter', 'original','all_markers' ,'39m_OG'
+model='original_20marks'
 
 FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
 fold_info = defaultdict(lambda: defaultdict(dict)) # Structure: fold_info[stim][sanitized_celltype][fold_index] = [test_patient1, ...]
-stim_celltype_pairs_in_folds = set() # Keep track of (stim, original_celltype) pairs processed
+stim_celltype_pairs_in_folds = set()
 try:
     with open(FOLD_INFO_FILE, 'r') as f:
         lines = f.readlines()
@@ -83,7 +81,7 @@ try:
         lines = lines[1:][::-1]  
         for line in lines:
             parts = line.strip().split(',')
-            if len(parts) < 4: continue # stim, sanitized, original, fold, patient1...
+            if len(parts) < 4: continue
             stim, sanitized_ct, original_ct, fold_idx_str = parts[:4]
             test_patients = parts[4:]
             try:
