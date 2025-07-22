@@ -78,7 +78,7 @@ def main():
     # Split features by stim
     # ---------------------------
 
-    if "unstim" in input_stem.lower(): # Check if 'unstim' is in the filename stem
+    if "unstim_only" in input_stem.lower(): # Check if 'unstim' is in the filename stem
         stims = ['Unstim']
         print("Detected Unstim-only input file. Using stims:", stims)
     elif "medians_filtered" in input_stem.lower():

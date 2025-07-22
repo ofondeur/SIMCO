@@ -1,6 +1,8 @@
 # stabl_utils.py
 
 import os
+import sys
+sys.path.insert(0, '../Stabl')
 import numpy as np
 import pandas as pd
 from pathlib import Path

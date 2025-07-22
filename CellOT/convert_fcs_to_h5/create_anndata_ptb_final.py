@@ -8,7 +8,6 @@ import fcsparser
 import sys
 from tqdm import tqdm
 
-# ===== User‐defined directories =====
 RAW_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/raw_data/ptb_final_rawdata"
 OUTPUT_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_to_batchcorrect" # Changed output dir name
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -51,9 +50,8 @@ METAL_MAPPING = {
     "Lu176Di": "CD56", "Pt198Di": "CD3"
 }
 
-# ===== Helper functions =====
 def normalize_marker(raw_marker):
-    marker = str(raw_marker).strip() # Ensure string
+    marker = str(raw_marker).strip()
     if marker in METAL_MAPPING:
         marker = METAL_MAPPING[marker]
     marker = marker.strip()
