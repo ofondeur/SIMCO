@@ -6,7 +6,7 @@ import numpy as np
 
 def main():
     drug_to_use_list = ['PRA','LPZ','SALPZ','SA','MF','CHT','THF','RIF','MAP']
-    results_path="./Results/comp_9drugs_long/run_43/results_no_treatment"
+    results_path="./Results/comp_9drugs_long_pred_96_v3/run_/results_no_treatment"
 
     prediction_csv_path = os.path.join(results_path, 'prediction_drugs_final.csv')
     df = pd.read_csv(prediction_csv_path, index_col=0)

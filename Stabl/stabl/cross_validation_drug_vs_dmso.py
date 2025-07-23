@@ -741,22 +741,21 @@ def cv_drug_vs_dmso(
     
     # === SHAP summary plot global ===
     top_k = 10
-    top_features = shap_avg_importance.head(top_k).index.tolist()
+    top_features = shap_avg_importance.head(top_k).index.tolist()[::-1]
     shap_values_all = pd.concat(shap_values_all_folds)[top_features]
     X_all = X_tot.loc[shap_values_all.index, top_features]
-
+    
     shap.summary_plot(
         shap_values_all.values,
         features=X_all,
-        feature_names=X_all.columns,
+        feature_names=top_features,
         show=False,
         plot_type="dot"
     )
     plt.tight_layout()
     plt.savefig(summary_res_path / "shap_summary_plot_global.pdf")
     plt.close()
-    
-    # === Top SHAP features ===
+    top_features = shap_avg_importance.head(top_k).index.tolist()
     X_test_No_treat = X_tot.loc[shap_values_all.index, top_features]
     X_test_per_drug = {}
 
@@ -802,4 +801,3 @@ def cv_drug_vs_dmso(
     plt.close()
     
     return all_prediction_dicts
-    
