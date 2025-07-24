@@ -80,7 +80,7 @@ def train_cellot(outdir, config):
                 transport_eval.detach().numpy(), target_eval.detach().numpy()
             )
     
-            # Médianes par colonne
+            # Median per column
             median_transport = torch.median(transport_eval, dim=0).values
             median_target = torch.median(target_eval, dim=0).values
             median_error = torch.abs(median_transport - median_target).mean().item()
@@ -112,11 +112,7 @@ def train_cellot(outdir, config):
         features_eval_names = read_list(config.data.features_evaluation)
         features = read_list(config.data.features)
         features_eval_index_pred = [features.index(name) for name in features_eval_names]
-        #print('enterred features_evaluation')
-        #if "shuffle_target" in config.data:
-            #print('config.data.shuffle_target', config.data.shuffle_target)
         if "shuffle_target" in config.data and config.data.shuffle_target==True:
-            #print('enterred shuffle target')
             suffled_features=np.random.permutation(features_eval_names).copy().tolist()
             print('suffled_features: ',suffled_features)
             print('features: ',features)
@@ -166,7 +162,6 @@ def train_cellot(outdir, config):
     n_iters = config.training.n_iters
     step = load_item_from_save(cachedir / "last.pt", "step", 0)
 
-    #minmmd = load_item_from_save(cachedir / "model.pt", "minmmd", np.inf)
     if metric_type == "median":
         minmetric = load_item_from_save(cachedir / "model.pt", "minmedian", np.inf)
     elif metric_type=='mmd':
@@ -205,8 +200,6 @@ def train_cellot(outdir, config):
             iterator_test_source = iterator.test.source
 
         # target = next(iterator_train_target)
-        
-        # Debug prints for training iterators
         if iterator_train_source is None:
             print("Error: iterator.train.source is None at step", step)
         else:
@@ -246,12 +239,6 @@ def train_cellot(outdir, config):
             logger.log("train", gloss=gl.item(), floss=fl.item(), step=step)
 
         if step % config.training.eval_freq == 0:
-            #mmd = evaluate()
-            #mmd_log.append({'epoch':step,'MMD': mmd})
-            #if mmd < minmmd:
-                #minmmd = mmd
-                #torch.save(state_dict(f, g, opts, step=step, minmmd=minmmd),cachedir / "model.pt",)
-                
             mmd, median_error = evaluate()
             mmd_log.append({'epoch': step, 'MMD': mmd, 'MedianError': median_error})
             

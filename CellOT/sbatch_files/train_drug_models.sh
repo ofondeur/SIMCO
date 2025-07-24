@@ -10,7 +10,7 @@
 
 module load python/3.9.0
 
-VENV_PATH="/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/bin/activate"
+VENV_PATH="../cellot_venv/cells_combined/peter_ot/bin/activate"
 if [ -f "$VENV_PATH" ]; then
     source "$VENV_PATH"
 else
@@ -24,11 +24,11 @@ model_config='original'
 drug_used='PRA'
 
 # --- Directory Definitions ---
-BASE_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype"
-RESULTS_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/results_drug/cross_validation_${model}/${drug_used}"
+BASE_DIR="../datasets/ptb_concatenated_per_condition_celltype"
+RESULTS_DIR="../results_drug/cross_validation_${model}/${drug_used}"
 JOB_LIST_FILE="${BASE_DIR}/valid_jobs.txt"
 PATIENT_FILE="${BASE_DIR}/patients.txt"
-CONFIG_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/configs/tasks"
+CONFIG_DIR="../configs/tasks"
 mkdir -p "${RESULTS_DIR}"
 
 # --- Read Job Assignment ---
@@ -78,7 +78,7 @@ for (( i=0; i<${n_folds}; i++ )); do
     echo "Fold ${i} patients: ${folds[$i]}"
 done
 
-batch_corr_path="/home/groups/gbrice/ptb-drugscreen/ot/cellot/cross_validation/batchcorrection_2.csv"
+batch_corr_path="../cross_validation/batchcorrection_2.csv"
 JOB_NAME_FULL="${stim}_${sanitized_celltype}"
 CONFIG_PATH_FULL="${CONFIG_DIR}/drug_model_${model_config}_${drug_used}/${cv_condition}/ptb_${JOB_NAME_FULL}_${cv_condition}_train.yaml"
 OUTDIR_FULL="${RESULTS_DIR}/${stim}/${sanitized_celltype}/model-${JOB_NAME_FULL}"
@@ -89,8 +89,8 @@ TEST_FILE="${OUTDIR_FULL}/cache/model.pt"
 if [ ! -f "$TEST_FILE" ]; then
 
     echo "[INFO]  Full Model for ${stim} / ${sanitized_celltype} "
-    python /home/groups/gbrice/ptb-drugscreen/ot/cellot/scripts/train.py \
-          --config /home/groups/gbrice/ptb-drugscreen/ot/cellot/configs/models/cellot_steroids.yaml \
+    python ../scripts/train.py \
+          --config ../configs/models/cellot_steroids.yaml \
           --config "${CONFIG_PATH_FULL}" \
           --outdir "${OUTDIR_FULL}" \
           --config.data.stim "${stim}" \

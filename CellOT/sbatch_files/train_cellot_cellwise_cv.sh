@@ -2,14 +2,14 @@
 #SBATCH --job-name=ptb_different_IO_batchcorr
 #SBATCH --output=logs/ptb_different_IO_batchcorr/train_cellot_cv_%A_%a.out
 #SBATCH --error=logs/ptb_different_IO_batchcorr/train_cellot_cv_%A_%a.err
-#SBATCH --time=40:00:00 # Increased time slightly per job
+#SBATCH --time=40:00:00
 #SBATCH -p normal
-#SBATCH -c 1 # Maybe increase cores slightly if I/O or Python is heavy
-#SBATCH --mem=32GB # Increased memory slightly
+#SBATCH -c 1
+#SBATCH --mem=32GB
 #SBATCH --array=0-167
 module load python/3.9.0
 
-VENV_PATH="/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/peter_ot/bin/activate"
+VENV_PATH="../cellot_venv/bin/activate"
 if [ -f "$VENV_PATH" ]; then
     source "$VENV_PATH"
 else
@@ -19,11 +19,11 @@ fi
 
 model='different_IO' 
 
-BASE_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype"
-RESULTS_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_${model}_batchcorr"
+BASE_DIR="../datasets/ptb_concatenated_per_condition_celltype"
+RESULTS_DIR="../results/cross_validation_${model}_batchcorr"
 JOB_LIST_FILE="${BASE_DIR}/valid_jobs.txt"
 PATIENT_FILE="${BASE_DIR}/patients_HV.txt"
-CONFIG_DIR="/home/groups/gbrice/ptb-drugscreen/ot/cellot/configs/tasks"
+CONFIG_DIR="../configs/tasks"
 mkdir -p "${RESULTS_DIR}"
 
 LINE_NUM=$((SLURM_ARRAY_TASK_ID + 1))
@@ -74,13 +74,13 @@ echo "--- Training FULL Model ---"
 
 cv_condition='HVPV'
 drug_used='DMSO'
-batch_corr_path="/home/groups/gbrice/ptb-drugscreen/ot/cellot/cross_validation/batchcorrection.csv"
+batch_corr_path="../cross_validation/batchcorrection.csv"
 JOB_NAME_FULL="${stim}_${sanitized_celltype}"
 CONFIG_PATH_FULL="${CONFIG_DIR}/ptb_final_cv_${model}/${cv_condition}/ptb_${JOB_NAME_FULL}_${cv_condition}_train.yaml"
 OUTDIR_FULL="${RESULTS_DIR}/${stim}/${sanitized_celltype}/model-${JOB_NAME_FULL}"
 mkdir -p "${OUTDIR_FULL}"
-python /home/groups/gbrice/ptb-drugscreen/ot/cellot/scripts/train.py \
-      --config /home/groups/gbrice/ptb-drugscreen/ot/cellot/configs/models/cellot_steroids.yaml \
+python ../cellot/scripts/train.py \
+      --config ../configs/models/cellot_steroids.yaml \
       --config "${CONFIG_PATH_FULL}" \
       --outdir "${OUTDIR_FULL}" \
       --config.data.target "${stim}" \
@@ -106,8 +106,8 @@ for k in $(seq 0 $((n_folds - 1))); do
     # Launch training for this fold
     echo "Launching training for Fold ${k} (${JOB_NAME_FOLD})..."
     echo "Outdir for the fold is (${OUTDIR_FOLD})"
-    python /home/groups/gbrice/ptb-drugscreen/ot/cellot/scripts/train.py \
-      --config /home/groups/gbrice/ptb-drugscreen/ot/cellot/configs/models/cellot_steroids.yaml \
+    python ../scripts/train.py \
+      --config ../configs/models/cellot_steroids.yaml \
       --config "${CONFIG_PATH_FULL}" \
       --outdir "${OUTDIR_FOLD}" \
       --config.data.target "${stim}" \

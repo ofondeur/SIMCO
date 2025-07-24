@@ -105,7 +105,6 @@ def read_single_anndata(config, path=None):
         
         for patient in present_patients:
             for population in data.obs["cell_type"].unique():
-                # Sous-ensemble Anndata correspondant
                 mask_patient = (data.obs["patient"] == patient)
                 mask_pop = (data.obs["cell_type"] == population)
     
@@ -143,7 +142,6 @@ def read_single_anndata(config, path=None):
                                         print(f"[WARNING] Correction mismatch: expected {corrected}, got {new_median}")
                                     else:
                                         print(f"[OK] Corrected median matches: {corrected}")
-                                
     
                     else:
                         

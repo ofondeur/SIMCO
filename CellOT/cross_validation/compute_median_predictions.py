@@ -77,7 +77,7 @@ def compute_group_medians(df, markers):
 # Main processing
 ############################
 
-model='olivier' # choose among 'olivier', 'peter', 'original','all_markers','original_median_20marks','original_20marks'
+model='original' # choose among 'original','all_markers','original_median_20marks','original_20marks'...
 
 
 FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
@@ -138,7 +138,6 @@ def main():
     
                 df_all = load_anndata_to_df(pred_path,drug_used)
     
-                # Filtrer les lignes baseline (true unstim corrigé)
                 df_baseline = df_all[(df_all["state"] == "true_corrected") & (df_all["stim"] == "Unstim")]
                 with open(f'/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/features_evaluation/features_{stim}_{sanitized_celltype}.txt') as f:
                     markers = [line.strip() for line in f if line.strip()]
@@ -156,7 +155,6 @@ def main():
                 else:
                     baseline_store[baseline_key] = baseline_medians.copy()
                 
-                # Filtrer les lignes prédictions
                 df_pred = df_all[df_all["state"] == "predicted"]
                 pred_medians = compute_group_medians(df_pred,markers)
                 pred_medians["stim"] = stim

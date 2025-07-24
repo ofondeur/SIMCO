@@ -1,5 +1,8 @@
 import csv
 from pathlib import Path
+"""
+# This script generates a CSV file containing fold information for cross-validation in a drug screening dataset.
+"""
 model='original_20marks'
 CV_DIR = Path(f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}")
 
@@ -15,7 +18,6 @@ with open(VALID_JOBS_PATH, "r") as f:
         stim, sanitized_celltype, original_celltype = line.strip().split(",")
 
         for fold_idx in range(NUM_FOLDS):
-            # Génère le chemin du fichier test_patients.txt
             fold_dir = CV_DIR / stim / f"{sanitized_celltype}" / f"model-{stim}_{sanitized_celltype}_fold{fold_idx}"
             test_file = fold_dir / "test_patients.txt"
 
