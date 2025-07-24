@@ -11,7 +11,6 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from xgboost import XGBRegressor
 from sklearn.impute import SimpleImputer
 from sklearn import clone
-from scipy.stats import pearsonr, spearmanr
 from pathlib import Path
 import os
 import numpy as np
@@ -19,7 +18,6 @@ import shap
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.cm import get_cmap
 import pandas as pd
 import warnings
 import xgboost as xgb
@@ -66,6 +64,12 @@ def _make_groups(X, percentile):
     res = list(map(np.array, res))
     return res
 
+def aggregate_importances(importances_list):
+        total = defaultdict(float)
+        for imp in importances_list:
+            for k, v in imp.items():
+                total[k] += v
+        return pd.Series({k: v / len(importances_list) for k, v in total.items()}).sort_values(ascending=False)
 
 @ignore_warnings(category=ConvergenceWarning)
 def cv_on_existing_feats(
@@ -117,13 +121,12 @@ def cv_on_existing_feats(
     for model in models:
         if "STABL" in model:
             df = pd.read_csv(Path(fold_feats_path, "Training CV", f"Selected Features {model}.csv"), index_col=0)
-            #df = pd.read_csv(Path(fold_feats_path, f"Selected Features STABL ALasso (CellOT just stims).csv"), index_col=0)
             selected_features_from_file[model] = [
                 eval(features) if isinstance(features, str) else features
                 for features in df["Fold selected features"]
             ]
     k = 1
-    path2="/home/groups/gbrice/ptb-drugscreen/ool_stabl/onset_test/Preprocessed_OOL_Clinical.csv"
+    path2="../Data/Preprocessed_OOL_Clinical.csv"
     true_data=pd.read_csv(path2)
     true_data.set_index("ID", inplace=True)
 
@@ -330,8 +333,7 @@ def cv_drug_vs_dmso(
     selected_features_from_file = dict()
     for model in models:
         if "STABL" in model:
-            model_formatted=model.replace(' ','_')
-            df = pd.read_csv(Path(fold_feats_path, "Training_CV", f"Selected_Features_{model_formatted}.csv"), index_col=0)
+            df = pd.read_csv(Path(fold_feats_path, "Training CV", f"Selected Features {model}.csv"), index_col=0)
             selected_features_from_file[model] = [
                 eval(features) if isinstance(features, str) else features
                 for features in df["Fold selected features"]
@@ -498,7 +500,6 @@ def cv_drug_vs_dmso(
                 stabl_dir.mkdir(parents=True, exist_ok=True)
                 val.to_csv(stabl_dir / f"Stabl features {model} {omic_name}.csv")
     
-    
     predictions_dict = {
         model: {
             drug: df.median(axis=1)
@@ -515,13 +516,6 @@ def cv_drug_vs_dmso(
         path_plots = os.path.join(cv_res_path, drug)
         save_plots(predictions_dict=prediction_dict_drug, y=y, task_type=task_type, save_path=path_plots)
         all_prediction_dicts[drug] = prediction_dict_drug
-    
-    def aggregate_importances(importances_list):
-        total = defaultdict(float)
-        for imp in importances_list:
-            for k, v in imp.items():
-                total[k] += v
-        return pd.Series({k: v / len(importances_list) for k, v in total.items()}).sort_values(ascending=False)
     
     xgb_avg_importance = aggregate_importances(xgb_importances_per_fold)
     shap_avg_importance = aggregate_importances(shap_importances_per_fold)
@@ -602,6 +596,7 @@ def cv_drug_vs_dmso(
         common_idx = X_drug.index.intersection(X_notreat.index)
         delta = (X_drug.loc[common_idx] - X_notreat.loc[common_idx]).mean(axis=0)
         feature_deltas[drug] = delta
+
     feature_deltas = feature_deltas.loc[top_features]
     plt.figure(figsize=(10, 6))
     sns.heatmap(feature_deltas, annot=True, cmap="RdBu_r", center=0, linewidths=0.5, fmt=".2f")

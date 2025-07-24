@@ -10,8 +10,9 @@
 module load python/3.9.0
 source ../../Stabl_venv/bin/activate
 
-python ../run_regression_cv.py \
+python ../run_cv_existing_feat.py \
     --features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
-    --results_dir ../Results/cross_validation_KO_XGB \
+    --fold_feats_path ../Results/results_ina_13OG_final_long_allstims_filtered_xgboost_knockoff_GSS \
+    --results_dir ../Results/comp_9drugs_long \
     --artificial_type knockoff \
     --model_chosen xgboost

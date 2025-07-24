@@ -267,7 +267,6 @@ def multi_omic_stabl_cv(
             y_train, y_test = y.loc[train_idx], y.loc[test_idx]
 
             if len(fold_selected_features[model]) > 0:
-                # Standardization
                 std_pipe = Pipeline(
                     steps=[
                         ('imputer', SimpleImputer(strategy="median")),
