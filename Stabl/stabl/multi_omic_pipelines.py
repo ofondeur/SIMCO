@@ -135,7 +135,6 @@ def multi_omic_stabl_cv(
     n_iter_lf: int, default=10000
         Number of iterations for the late fusion.
 
-
     Returns
     -------
     predictions_dict: dict
@@ -143,19 +142,17 @@ def multi_omic_stabl_cv(
     """
     if early_fusion:
         models += ["EF " + model for model in models if "STABL" not in model]
-
-    lasso = estimators["lasso"]
-    alasso = estimators["alasso"]
-    en = estimators["en"]
-
-    stabl = estimators["stabl_lasso"]
-    stabl_alasso = estimators["stabl_alasso"]
-    stabl_en = estimators["stabl_en"]
-
+    model_obj_map = {
+    "Lasso": estimators["lasso"],
+    "ALasso": estimators["alasso"],
+    "ElasticNet": estimators["en"],
+    "STABL Lasso": estimators["stabl_lasso"],
+    "STABL ALasso": estimators["stabl_alasso"],
+    "STABL ElasticNet": estimators["stabl_en"],
+}
     os.makedirs(Path(save_path, "Training CV"), exist_ok=True)
     os.makedirs(Path(save_path, "Summary"), exist_ok=True)
 
-    # Initializing the df containing the data of all omics
     X_tot = pd.concat(data_dict.values(), axis="columns")
 
     predictions_dict = dict()
@@ -194,18 +191,13 @@ def multi_omic_stabl_cv(
             test_idx_tmp = X_omic.index.intersection(test_idx)
             X_tmp = X_omic.drop(index=test_idx, errors="ignore")
             X_test_tmp = X_omic.loc[test_idx_tmp]
-            # Preprocessing of X_tmp
+
             X_tmp = remove_low_info_samples(X_tmp)
-            ###
             common_idx = X_tmp.index.intersection(y.index)
             X_tmp = X_tmp.loc[common_idx]
             y_tmp = y.loc[common_idx]
             
             groups = outer_groups.loc[common_idx] if outer_groups is not None else None
-            
-            #y_tmp = y.loc[X_tmp.index]
-           
-
             groups = outer_groups[X_tmp.index] if outer_groups is not None else None
 
             X_tmp_std = pd.DataFrame(
@@ -222,117 +214,53 @@ def multi_omic_stabl_cv(
             assert X_tmp_std.shape[0] == y_tmp.shape[0], f"Mismatch after cleaning and transform: X={X_tmp_std.shape}, y={y_tmp.shape}"
             print(X_tmp_std.shape)
             # __STABL__
-            if "STABL Lasso" in models:
-                # fit STABL Lasso
-                print("Fitting of STABL Lasso")
-                stabl.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl.get_feature_names_out())
-                fold_selected_features["STABL Lasso"].extend(tmp_sel_features)
+            for model_upper in filter(lambda x: "STABL" in x, models):
+                print(f"Fitting of {model_upper}")
+                model_obj = model_obj_map.get(model_upper)
+                if model_obj is None:
+                    raise ValueError(f"Model {model_upper} not found in model_obj_map. Check model names.")
+                
+                model_obj.fit(X_tmp_std, y_tmp, groups=groups)
+                tmp_sel_features = list(model_obj.get_feature_names_out())
+                fold_selected_features[model_upper].extend(tmp_sel_features)
                 print(
-                    f"STABL Lasso finished on {omic_name} ({X_tmp.shape[0]} samples);"
+                    f"{model_upper} finished on {omic_name} ({X_tmp.shape[0]} samples);"
                     f" {len(tmp_sel_features)} features selected"
                 )
-                stabl_features_dict["STABL Lasso"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl.min_fdr_
-                stabl_features_dict["STABL Lasso"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl.fdr_min_threshold_
+                stabl_features_dict[model_upper][omic_name].loc[f'Fold n°{k}', "min FDP+"] = model_obj.min_fdr_
+                stabl_features_dict[model_upper][omic_name].loc[f'Fold n°{k}', "Threshold"] = model_obj.fdr_min_threshold_
                 if k == 1:
                     save_stabl_results(
-                        stabl=stabl,
-                        path=Path(save_path, "Training CV", f"STABL Lasso results on {omic_name}"),
+                        stabl=model_obj,
+                        path=Path(save_path, "Training CV", f"{model_upper} results on {omic_name}"),
                         df_X=X_tmp_std,
                         y=y_tmp,
                         task_type=task_type
                     )
+            
+            for model_upper in filter(lambda x: "STABL" not in x and "EF" not in x, models):
+                print(f"Fitting of {model_upper}")
+                model_obj = model_obj_map.get(model_upper)
+                if model_obj is None:
+                    raise ValueError(f"Model {model_upper} not found in model_obj_map. Check model names.")
 
-            if "STABL ALasso" in models:
-                # fit STABL ALasso
-                print("Fitting of STABL ALasso")
-                stabl_alasso.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_alasso.get_feature_names_out())
-                fold_selected_features["STABL ALasso"].extend(tmp_sel_features)
-                print(
-                    f"STABL ALasso finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL ALasso"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_alasso.min_fdr_
-                stabl_features_dict["STABL ALasso"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_alasso.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_alasso,
-                        path=Path(save_path, "Training CV", f"STABL ALasso results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "STABL ElasticNet" in models:
-                # fit STABL ElasticNet
-                print("Fitting of STABL ElasticNet")
-                stabl_en.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_en.get_feature_names_out())
-                fold_selected_features["STABL ElasticNet"].extend(tmp_sel_features)
-                print(
-                    f"STABL ElasticNet finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL ElasticNet"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_en.min_fdr_
-                stabl_features_dict["STABL ElasticNet"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_en.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_en,
-                        path=Path(save_path, "Training CV", f"STABL ElasticNet results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "Lasso" in models:
-                # __Lasso__
-                print("Fitting of Lasso")
-                model = clone(lasso)
+                model = clone(model_obj)
+                
                 if task_type == "binary":
                     predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
                 else:
                     predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
+
                 tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["Lasso"].extend(tmp_sel_features)
+                fold_selected_features[model_upper].extend(tmp_sel_features)
+
                 print(
-                    f"Lasso finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
+                    f"{model_upper} finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
                     f" {len(tmp_sel_features)} features selected"
                 )
-                predictions_dict_late_fusion["Lasso"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
 
-            if "ALasso" in models:
-                # __ALasso__
-                print("Fitting of ALasso")
-                model = clone(alasso)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["ALasso"].extend(tmp_sel_features)
-                print(
-                    f"ALasso finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["ALasso"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
-            if "ElasticNet" in models:
-                # __EN__
-                print("Fitting of ElasticNet")
-                model = clone(en)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["ElasticNet"].extend(tmp_sel_features)
-                print(
-                    f"ElasticNet finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["ElasticNet"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
+                predictions_dict_late_fusion[model_upper][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
+            
         for model in filter(lambda x: "STABL" in x, models):
             X_train = X_tot.loc[train_idx, fold_selected_features[model]]
             X_test = X_tot.loc[test_idx, fold_selected_features[model]]
@@ -346,7 +274,6 @@ def multi_omic_stabl_cv(
                         ('std', StandardScaler())
                     ]
                 )
-
                 X_train = pd.DataFrame(
                     data=std_pipe.fit_transform(X_train),
                     index=X_train.index,
@@ -379,22 +306,16 @@ def multi_omic_stabl_cv(
 
             else:
                 if task_type == "binary":
-                    #predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = [0.5] * len(test_idx)
-                    # Create the column if it doesn't exist yet
                     if f'Fold n°{k}' not in predictions_dict[model].columns:
                         predictions_dict[model][f'Fold n°{k}'] = np.nan
-                    
-                    # Then assign
-                    print(len(test_idx))
                     predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = 0.5
-
 
                 elif task_type == "regression":
                     predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = [np.mean(y_train)] * len(test_idx)
 
                 else:
                     raise ValueError("task_type not recognized.")
-        # __late fusion__
+
         if late_fusion:
             preds_lf = late_fusion_cv(
                 predictions_dict_late_fusion, y[test_idx], task_type,
@@ -403,7 +324,6 @@ def multi_omic_stabl_cv(
             for model in preds_lf:
                 predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = preds_lf[model]
 
-        # __EF Lasso__
         if early_fusion:
             X_train = X_tot.loc[train_idx]
             y_train = y.loc[train_idx]
@@ -420,61 +340,35 @@ def multi_omic_stabl_cv(
                 index=X_test.index
             )
             groups = outer_groups[train_idx] if outer_groups is not None else None
+            for model_upper in filter(lambda x: "STABL" not in x and "EF" in x, models):
+                print(f"Fitting of {model_upper}")
+                
+                model_base = model_upper.replace("EF ", "")
+                model_obj = model_obj_map.get(model_base)
+                if model_obj is None:
+                    raise ValueError(f"Model {model_base} not found in model_obj_map. Check model names.")
 
-            if "EF Lasso" in models:
-                # __Lasso__
-                print("Fitting of EF Lasso")
-                model = clone(lasso)
+                model = clone(model_obj)
+
                 if task_type == "binary":
                     predictions = model.fit(X_train_std, y_train, groups=groups).predict_proba(X_test_std)[:, 1]
                 else:
                     predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
-                tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["EF Lasso"] = tmp_sel_features
-                print(
-                    f"EF Lasso finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict["EF Lasso"].loc[test_idx, f"Fold n°{k}"] = predictions
 
-            if "EF ALasso" in models:
-                # __ALasso__
-                print("Fitting of EF ALasso")
-                model = clone(alasso)
-                if task_type == "binary":
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
                 tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["EF ALasso"] = tmp_sel_features
-                print(
-                    f"EF ALasso finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict["EF ALasso"].loc[test_idx, f"Fold n°{k}"] = predictions
+                fold_selected_features[model_upper] = tmp_sel_features
 
-            if "EF ElasticNet" in models:
-                # __EN__
-                print("Fitting of EF ElasticNet")
-                model = clone(en)
-                if task_type == "binary":
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
-                tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["EF ElasticNet"] = tmp_sel_features
                 print(
-                    f"EF ElasticNet finished on {omic_name} ({X_train_std.shape[0]} samples);"
+                    f"{model_upper} finished on early fusion ({X_train_std.shape[0]} samples);"
                     f" {len(tmp_sel_features)} features selected"
                 )
-                predictions_dict["EF ElasticNet"].loc[test_idx, f"Fold n°{k}"] = predictions
+                predictions_dict[model_upper].loc[test_idx, f"Fold n°{k}"] = predictions
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         for model in models:
             print(f"This fold: {len(fold_selected_features[model])} features selected for {model}")
             selected_features_dict[model].append(fold_selected_features[model])
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
-
         k += 1
 
     # __SAVING_RESULTS__
@@ -489,7 +383,6 @@ def multi_omic_stabl_cv(
     formatted_features_dict = dict()
 
     for model in models:
-
         #jaccard_matrix_dict[model] = jaccard_matrix(selected_features_dict[model])
 
         formatted_features_dict[model] = pd.DataFrame(
@@ -513,7 +406,6 @@ def multi_omic_stabl_cv(
         task_type=task_type,
         selected_features_dict=formatted_features_dict
     )
-
     p_values = compute_pvalues_table(
         predictions_dict=predictions_dict,
         y=y,
@@ -535,7 +427,6 @@ def multi_omic_stabl_cv(
         task_type=task_type,
         save_path=cv_res_path
     )
-
     return predictions_dict
 
 
@@ -1198,766 +1089,3 @@ def late_fusion_validation(
         return final_predictions_dict
     else:
         return None
-
-def multi_omic_stabl_cv_noe(
-        data_dict,
-        y,
-        outer_splitter,
-        estimators,
-        task_type,
-        model_chosen,
-        models,
-        save_path=None,
-        outer_groups=None,
-        early_fusion=False,
-        late_fusion=False,
-        n_iter_lf=10000,
-):
-    if early_fusion:
-        models += ["EF " + model for model in models if "STABL" not in model]
-
-    lasso = estimators["lasso"]
-    en = estimators["en"]
-    alasso = estimators["alasso"]
-    
-    if 'rf' in estimators.keys():
-        rf=estimators["rf"]
-    if 'cb' in estimators.keys():
-        cb=estimators["cb"]
-    if 'lgb' in estimators.keys():
-        lgb=estimators["lgb"]
-    if 'xgb' in estimators.keys():
-        xgb=estimators["xgb"]
-    stabl_lasso = estimators["stabl_lasso"]
-    stabl_en = estimators["stabl_en"]
-    stabl_alasso = estimators["stabl_alasso"]
-    if 'stabl_rf' in estimators.keys():
-        stabl_rf=estimators["stabl_rf"]
-    if 'stabl_cb' in estimators.keys():
-        stabl_cb=estimators["stabl_cb"]
-    if 'stabl_lgb' in estimators.keys():
-        stabl_lgb=estimators["stabl_lgb"]
-    if 'stabl_xgb' in estimators.keys():
-        stabl_xgb=estimators["stabl_xgb"]
-    
-    os.makedirs(Path(save_path, "Training CV"), exist_ok=True)
-    os.makedirs(Path(save_path, "Summary"), exist_ok=True)
-
-    # Initializing the df containing the data of all omics
-    X_tot = pd.concat(data_dict.values(), axis="columns")
-
-    predictions_dict = dict()
-    selected_features_dict = dict()
-    stabl_features_dict = dict()
-
-    for model in models:
-        predictions_dict[model] = pd.DataFrame(data=None, index=y.index)
-        selected_features_dict[model] = []
-        stabl_features_dict[model] = dict()
-        for omic_name in data_dict.keys():
-            if "STABL" in model:
-                stabl_features_dict[model][omic_name] = pd.DataFrame(data=None, columns=["Threshold", "min FDP+"])
-
-    k = 1
-    for train, test in (tbar := tqdm(
-            outer_splitter.split(X_tot, y, groups=outer_groups),
-            total=outer_splitter.get_n_splits(X=X_tot, y=y, groups=outer_groups),
-            file=sys.stdout
-    )):
-        train_idx, test_idx = y.iloc[train].index, y.iloc[test].index
-        groups = outer_groups.loc[train_idx].values if outer_groups is not None else None
-
-        predictions_dict_late_fusion = dict()
-        fold_selected_features = dict()
-        for model in models:
-            fold_selected_features[model] = []
-            if "STABL" not in model and "EF" not in model:
-                predictions_dict_late_fusion[model] = dict()
-                for omic_name in data_dict.keys():
-                    predictions_dict_late_fusion[model][omic_name] = pd.DataFrame(data=None, index=test_idx)
-
-        tbar.set_description(f"{len(train_idx)} train samples, {len(test_idx)} test samples")
-
-        for omic_name, X_omic in data_dict.items():
-            test_idx_tmp = X_omic.index.intersection(test_idx)
-            X_tmp = X_omic.drop(index=test_idx, errors="ignore")
-            X_test_tmp = X_omic.loc[test_idx_tmp]
-            # Preprocessing of X_tmp
-            X_tmp = remove_low_info_samples(X_tmp)
-            y_tmp = y.loc[X_tmp.index]
-            groups = outer_groups[X_tmp.index] if outer_groups is not None else None
-
-            X_tmp_std = pd.DataFrame(
-                data=preprocessing.fit_transform(X_tmp),
-                index=X_tmp.index,
-                columns=preprocessing.get_feature_names_out()
-            )
-
-            X_test_tmp_std = pd.DataFrame(
-                data=preprocessing.transform(X_test_tmp),
-                index=X_test_tmp.index,
-                columns=preprocessing.get_feature_names_out()
-            )
-
-            # _STABL_
-            if "STABL Lasso" in models:
-                # fit STABL Lasso
-                print("Fitting of STABL Lasso")
-                stabl_lasso.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_lasso.get_feature_names_out())
-                fold_selected_features["STABL Lasso"].extend(tmp_sel_features)
-                print(
-                    f"STABL Lasso finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL Lasso"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_lasso.min_fdr_
-                stabl_features_dict["STABL Lasso"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_lasso.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_lasso,
-                        path=Path(save_path, "Training CV", f"STABL Lasso results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "STABL ALasso" in models:
-                # fit STABL ALasso
-                print("Fitting of STABL ALasso")
-                stabl_alasso.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_alasso.get_feature_names_out())
-                fold_selected_features["STABL ALasso"].extend(tmp_sel_features)
-                print(
-                    f"STABL ALasso finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL ALasso"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_alasso.min_fdr_
-                stabl_features_dict["STABL ALasso"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_alasso.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_alasso,
-                        path=Path(save_path, "Training CV", f"STABL ALasso results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "STABL ElasticNet" in models:
-                # fit STABL ElasticNet
-                print("Fitting of STABL ElasticNet")
-                stabl_en.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_en.get_feature_names_out())
-                fold_selected_features["STABL ElasticNet"].extend(tmp_sel_features)
-                print(
-                    f"STABL ElasticNet finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL ElasticNet"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_en.min_fdr_
-                stabl_features_dict["STABL ElasticNet"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_en.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_en,
-                        path=Path(save_path, "Training CV", f"STABL ElasticNet results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-                    
-            if "STABL RandomForest" in models:
-                # fit STABL Lasso
-                print("Fitting of STABL RandomForest")
-                stabl_rf.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_rf.get_feature_names_out())
-                fold_selected_features["STABL RandomForest"].extend(tmp_sel_features)
-                print(
-                    f"STABL RandomForest finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL RandomForest"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_rf.min_fdr_
-                stabl_features_dict["STABL RandomForest"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_rf.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_rf,
-                        path=Path(save_path, "Training CV", f"STABL RandomForest results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-            if "STABL CatBoost" in models:
-                print("Fitting of STABL CatBoost")
-                stabl_cb.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_cb.get_feature_names_out())
-                fold_selected_features["STABL CatBoost"].extend(tmp_sel_features)
-                print(
-                    f"STABL CatBoost finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL CatBoost"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_cb.min_fdr_
-                stabl_features_dict["STABL CatBoost"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_cb.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_cb,
-                        path=Path(save_path, "Training CV", f"STABL CatBoost results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "STABL XGBoost" in models:
-                # fit STABL Lasso
-                print("Fitting of STABL XGBoost")
-                stabl_xgb.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_xgb.get_feature_names_out())
-                fold_selected_features["STABL XGBoost"].extend(tmp_sel_features)
-                print(
-                    f"STABL XGBoost finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL XGBoost"][omic_name].loc[f'Fold n°{k}', "min FDP+"] = stabl_xgb.min_fdr_
-                stabl_features_dict["STABL XGBoost"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_xgb.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_xgb,
-                        path=Path(save_path, "Training CV", f"STABL XGBoost results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "STABL LightGBM" in models:
-                print("Fitting of STABL LightGBM")
-                stabl_lgb.fit(X_tmp_std, y_tmp, groups=groups)
-                tmp_sel_features = list(stabl_lgb.get_feature_names_out())
-                fold_selected_features["STABL LightGBM"].extend(tmp_sel_features)
-                print(
-                    f"STABL LightGBM finished on {omic_name} ({X_tmp.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                stabl_features_dict["STABL LightGBM"][omic_name].loc[f'Fold n°{k}', "min FDP+"]   = stabl_lgb.min_fdr_
-                stabl_features_dict["STABL LightGBM"][omic_name].loc[f'Fold n°{k}', "Threshold"] = stabl_lgb.fdr_min_threshold_
-                if k == 1:
-                    save_stabl_results(
-                        stabl=stabl_lgb,
-                        path=Path(save_path, "Training CV", f"STABL LightGBM results on {omic_name}"),
-                        df_X=X_tmp_std,
-                        y=y_tmp,
-                        task_type=task_type
-                    )
-
-            if "Lasso" in models:
-                # _Lasso_
-                print("Fitting of Lasso")
-                model = clone(lasso)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["Lasso"].extend(tmp_sel_features)
-                print(
-                    f"Lasso finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["Lasso"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
-            if "ALasso" in models:
-                # _ALasso_
-                print("Fitting of ALasso")
-                model = clone(alasso)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["ALasso"].extend(tmp_sel_features)
-                print(
-                    f"ALasso finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["ALasso"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
-            if "ElasticNet" in models:
-                # _EN_
-                print("Fitting of ElasticNet")
-                model = clone(en)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["ElasticNet"].extend(tmp_sel_features)
-                print(
-                    f"ElasticNet finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["ElasticNet"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-        
-            if "RandomForest" in models:
-                # _Lasso_
-                print("Fitting of RandomForest")
-                model = clone(rf)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.feature_importances_.flatten())])
-                fold_selected_features["RandomForest"].extend(tmp_sel_features)
-                print(
-                    f"RandomForest finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["RandomForest"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-            
-            if "XGBoost" in models:
-                # _Lasso_
-                print("Fitting of XGBoost")
-                model = clone(xgb)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.feature_importances_.flatten())])
-                fold_selected_features["XGBoost"].extend(tmp_sel_features)
-                print(
-                    f"XGBoost finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["XGBoost"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
-            if "CatBoost" in models:
-                # _CatBoost_
-                print("Fitting of CatBoost")
-                model = clone(cb)
-                # entraînement + prédiction
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                # sélection des features dont l'importance > 0
-                importances = model.best_estimator_.get_feature_importance()
-                tmp_sel_features = list(X_tmp_std.columns[np.where(importances > 0)])
-                fold_selected_features["CatBoost"].extend(tmp_sel_features)
-                print(
-                    f"CatBoost finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                # stockage des prédictions pour la fusion tardive
-                predictions_dict_late_fusion["CatBoost"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
-            if "LightGBM" in models:
-                print("Fitting of LightGBM")
-                model = clone(lgb)
-                if task_type == "binary":
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict_proba(X_test_tmp_std)[:, 1]
-                else:
-                    predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
-                importances = model.best_estimator_.feature_importances_
-                tmp_sel_features = list(X_tmp_std.columns[np.where(importances > 0)])
-                fold_selected_features["LightGBM"].extend(tmp_sel_features)
-                print(
-                    f"LightGBM finished on {omic_name} ({X_tmp_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict_late_fusion["LightGBM"][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
-
-        for model in filter(lambda x: "STABL" in x, models):
-            X_train = X_tot.loc[train_idx, fold_selected_features[model]]
-            X_test = X_tot.loc[test_idx, fold_selected_features[model]]
-            y_train, y_test = y.loc[train_idx], y.loc[test_idx]
-
-            if len(fold_selected_features[model]) > 0:
-                # Standardization
-                std_pipe = Pipeline(
-                    steps=[
-                        ('imputer', SimpleImputer(strategy="median")),
-                        ('std', StandardScaler())
-                    ]
-                )
-
-                X_train = pd.DataFrame(
-                    data=std_pipe.fit_transform(X_train),
-                    index=X_train.index,
-                    columns=X_train.columns
-                )
-                X_test = pd.DataFrame(
-                    data=std_pipe.transform(X_test),
-                    index=X_test.index,
-                    columns=X_test.columns
-                )
-
-                # _Final Models_
-                if task_type == "binary":
-                    #predictions = clone(logit).fit(X_train, y_train).predict_proba(X_test)[:, 1].flatten()
-                    predictions = clone(XGBClassifier(use_label_encoder=False, eval_metric="logloss", n_estimators=200, random_state=42)).fit(X_train, y_train).predict_proba(X_test)[:, 1].flatten()
-                    #predictions = clone(RandomForestClassifier(n_estimators=500, max_features=0.2, random_state=42)).fit(X_train, y_train).predict_proba(X_test)[:, 1].flatten()
-
-                elif task_type == "regression":
-                    if model_chosen=='lin_reg':
-                        predictions = clone(linreg).fit(X_train, y_train).predict(X_test)
-                    elif model_chosen=='rf':
-                        predictions = clone(randomforest).fit(X_train, y_train).predict(X_test)
-                    elif model_chosen=='xgboost':
-                        predictions = clone(xgboost).fit(X_train, y_train).predict(X_test)
-                        
-                    #predictions = clone(linreg).fit(X_train, y_train).predict(X_test)
-                    #predictions = clone(XGBRegressor(n_estimators=200, learning_rate=0.1, max_depth=6, random_state=42, objective="reg:squarederror")).fit(X_train, y_train).predict(X_test)
-
-                else:
-                    raise ValueError("task_type not recognized.")
-
-                predictions_dict[model].loc[test_idx, f"Fold n°{k}"] = predictions
-
-            else:
-                if task_type == "binary":
-                    predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = [0.5] * len(test_idx)
-
-                elif task_type == "regression":
-                
-                    predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = [np.mean(y_train)] * len(test_idx)
-
-                else:
-                    raise ValueError("task_type not recognized.")
-                
-        # _late fusion_
-        if late_fusion:
-            preds_lf = late_fusion_cv(
-                predictions_dict_late_fusion, y[test_idx], task_type,
-                Path(save_path, "Training CV"), n_iter=n_iter_lf
-            )
-            for model in preds_lf:
-                predictions_dict[model].loc[test_idx, f'Fold n°{k}'] = preds_lf[model]
-
-        # _EF Lasso_
-        if early_fusion:
-            X_train = X_tot.loc[train_idx]
-            y_train = y.loc[train_idx]
-            X_test = X_tot.loc[test_idx]
-            X_train_std = pd.DataFrame(
-                data=preprocessing.fit_transform(X_train),
-                columns=preprocessing.get_feature_names_out(),
-                index=X_train.index
-            )
-
-            X_test_std = pd.DataFrame(
-                data=preprocessing.transform(X_test),
-                columns=preprocessing.get_feature_names_out(),
-                index=X_test.index
-            )
-            groups = outer_groups[train_idx] if outer_groups is not None else None
-
-            if "EF Lasso" in models:
-                # _Lasso_
-                print("Fitting of EF Lasso")
-                model = clone(lasso)
-                if task_type == "binary":
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
-                tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["EF Lasso"] = tmp_sel_features
-                print(
-                    f"EF Lasso finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict["EF Lasso"].loc[test_idx, f"Fold n°{k}"] = predictions
-
-            if "EF ALasso" in models:
-                # _ALasso_
-                print("Fitting of EF ALasso")
-                model = clone(alasso)
-                if task_type == "binary":
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
-                tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["EF ALasso"] = tmp_sel_features
-                print(
-                    f"EF ALasso finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict["EF ALasso"].loc[test_idx, f"Fold n°{k}"] = predictions
-
-            if "EF ElasticNet" in models:
-                # _EN_
-                print("Fitting of EF ElasticNet")
-                model = clone(en)
-                if task_type == "binary":
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
-                tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
-                fold_selected_features["EF ElasticNet"] = tmp_sel_features
-                print(
-                    f"EF ElasticNet finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                    f" {len(tmp_sel_features)} features selected"
-                )
-                predictions_dict["EF ElasticNet"].loc[test_idx, f"Fold n°{k}"] = predictions
-
-        print("~~~~~~~~~~~~~~~~~~~")
-        for model in models:
-            print(f"This fold: {len(fold_selected_features[model])} features selected for {model}")
-            selected_features_dict[model].append(fold_selected_features[model])
-        print("~~~~~~~~~~~~~~~~~~~\n")
-
-        k += 1
-
-    # _SAVING_RESULTS_
-    print("Saving results...")
-    if y.name is None:
-        y.name = "outcome"
-
-    summary_res_path = Path(save_path, "Summary")
-    cv_res_path = Path(save_path, "Training CV")
-
-    jaccard_matrix_dict = dict()
-    formatted_features_dict = dict()
-
-    for model in models:
-
-        #jaccard_matrix_dict[model] = jaccard_matrix(selected_features_dict[model])
-
-        formatted_features_dict[model] = pd.DataFrame(
-            data={
-                "Fold selected features": selected_features_dict[model],
-                "Fold nb of features": [len(el) for el in selected_features_dict[model]]
-            },
-            index=[f"Fold {i}" for i in range(outer_splitter.get_n_splits(X=X_tot))]
-        )
-        formatted_features_dict[model].to_csv(Path(cv_res_path, f"Selected Features {model}.csv"))
-        if "STABL" in model:
-            for omic_name, val in stabl_features_dict[model].items():
-                os.makedirs(Path(cv_res_path, f"Stabl features {model}"), exist_ok=True)
-                val.to_csv(Path(cv_res_path, f"Stabl features {model}", f"Stabl features {model} {omic_name}.csv"))
-
-    predictions_dict = {model: predictions_dict[model].median(axis=1) for model in predictions_dict.keys()}
-
-    table_of_scores = compute_scores_table(
-        predictions_dict=predictions_dict,
-        y=y,
-        task_type=task_type,
-        selected_features_dict=formatted_features_dict
-    )
-
-    p_values = compute_pvalues_table(
-        predictions_dict=predictions_dict,
-        y=y,
-        task_type=task_type,
-        selected_features_dict=formatted_features_dict
-    )
-
-    table_of_scores.to_csv(Path(summary_res_path, "Scores training CV.csv"))
-    table_of_scores.to_csv(Path(cv_res_path, "Scores training CV.csv"))
-
-    p_values_path = Path(cv_res_path, "p-values")
-    os.makedirs(p_values_path, exist_ok=True)
-    for m, p in p_values.items():
-        p.to_csv(Path(p_values_path, f"{m}.csv"))
-
-    save_plots(
-        predictions_dict=predictions_dict,
-        y=y,
-        task_type=task_type,
-        save_path=cv_res_path
-    )
-
-    return predictions_dict
-    
-    
-def multi_omic_stabl_cv_noe_splits(
-    data_dict,
-    y,
-    outer_splitter,            # splitter déjà “filtré” (jobs-array)
-    estimators,
-    task_type,
-    model_chosen,
-    models,
-    save_path=None,
-    outer_groups=None,
-    early_fusion=False,
-    late_fusion=False,
-    n_iter_lf=10_000,
-):
-    save_path   = Path(save_path or ".").resolve()
-    cv_dir      = save_path / "Training_CV"
-    summary_dir = save_path / "Summary"
-    cv_dir.mkdir(parents=True, exist_ok=True)
-    summary_dir.mkdir(exist_ok=True)
-
-    # ===== 1. extrait tous les estimateurs demandés ==============
-    lasso        = estimators["lasso"]
-    alasso       = estimators["alasso"]
-    en           = estimators["en"]
-    stabl_lasso  = estimators["stabl_lasso"]
-    stabl_alasso = estimators["stabl_alasso"]
-    stabl_en     = estimators["stabl_en"]
-
-    rf   = estimators.get("rf")
-    xgb  = estimators.get("xgb")
-    stabl_rf  = estimators.get("stabl_rf")
-    stabl_xgb = estimators.get("stabl_xgb")
-
-    # ===== 2. structures de sortie ===============================
-    X_tot = pd.concat(data_dict.values(), axis=1)
-    preds_dict   = {m: pd.DataFrame(index=y.index) for m in models}
-    sel_features = {m: []                         for m in models}
-
-    # ===== 3. boucle externe CV ==================================
-    for fold, (tr, te) in enumerate(
-            tqdm(outer_splitter.split(X_tot, y, groups=outer_groups),
-                 total=outer_splitter.get_n_splits(),
-                 desc="[STABL-CV]", leave=False)
-    ):
-        tr_idx, te_idx = y.iloc[tr].index, y.iloc[te].index
-        g_tr           = outer_groups.loc[tr_idx] if outer_groups is not None else None
-
-        # conteneur pr la fusion tardive
-        preds_lf = {
-            m: {o: pd.Series(index=te_idx, dtype=float) for o in data_dict}
-            for m in models if "STABL" not in m and "EF" not in m
-        }
-
-        # ===== 3-A. boucle omiques ================================
-        for omic, X in data_dict.items():
-            X_tr_raw, X_te_raw = X.loc[tr_idx], X.loc[te_idx]
-
-            # pré-traitement basique
-            pipe = Pipeline([
-                ("imp", SimpleImputer(strategy="median")),
-                ("std", StandardScaler()),
-            ])
-            X_tr = pd.DataFrame(pipe.fit_transform(X_tr_raw),
-                                index=tr_idx, columns=X_tr_raw.columns)
-            X_te = pd.DataFrame(pipe.transform(X_te_raw),
-                                index=te_idx, columns=X_te_raw.columns)
-
-            # ---------- STABL MODELS ------------------------------
-            if "STABL Lasso" in models:
-                stabl_lasso.fit(X_tr, y.loc[tr_idx], groups=g_tr)
-                feats = list(stabl_lasso.get_feature_names_out())
-                sel_features["STABL Lasso"].extend(feats)
-                if fold == 0:
-                    save_stabl_results(
-                        stabl_lasso, cv_dir/f"STABL_Lasso_{omic}",
-                        X_tr, y.loc[tr_idx], task_type)
-
-            if "STABL ALasso" in models:
-                stabl_alasso.fit(X_tr, y.loc[tr_idx], groups=g_tr)
-                feats = list(stabl_alasso.get_feature_names_out())
-                sel_features["STABL ALasso"].extend(feats)
-                if fold == 0:
-                    save_stabl_results(
-                        stabl_alasso, cv_dir/f"STABL_ALasso_{omic}",
-                        X_tr, y.loc[tr_idx], task_type)
-
-            if "STABL ElasticNet" in models:
-                stabl_en.fit(X_tr, y.loc[tr_idx], groups=g_tr)
-                feats = list(stabl_en.get_feature_names_out())
-                sel_features["STABL ElasticNet"].extend(feats)
-                if fold == 0:
-                    save_stabl_results(
-                        stabl_en, cv_dir/f"STABL_EN_{omic}",
-                        X_tr, y.loc[tr_idx], task_type)
-
-            if stabl_rf and "STABL RandomForest" in models:
-                stabl_rf.fit(X_tr, y.loc[tr_idx], groups=g_tr)
-                feats = list(stabl_rf.get_feature_names_out())
-                sel_features["STABL RandomForest"].extend(feats)
-                if fold == 0:
-                    save_stabl_results(
-                        stabl_rf, cv_dir/f"STABL_RF_{omic}",
-                        X_tr, y.loc[tr_idx], task_type)
-
-            if stabl_xgb and "STABL XGBoost" in models:
-                stabl_xgb.fit(X_tr, y.loc[tr_idx], groups=g_tr)
-                feats = list(stabl_xgb.get_feature_names_out())
-                sel_features["STABL XGBoost"].extend(feats)
-                if fold == 0:
-                    save_stabl_results(
-                        stabl_xgb, cv_dir/f"STABL_XGB_{omic}",
-                        X_tr, y.loc[tr_idx], task_type)
-
-            # ---------- Modèles “simples” -------------------------
-            if "Lasso" in models:
-                m = clone(lasso).fit(X_tr, y.loc[tr_idx])
-                preds_lf["Lasso"][omic].loc[te_idx] = m.predict(X_te)
-                feats = X_tr.columns[np.flatnonzero(m.best_estimator_.coef_)]
-                sel_features["Lasso"].extend(feats)
-
-            if "ALasso" in models:
-                m = clone(alasso).fit(X_tr, y.loc[tr_idx])
-                preds_lf["ALasso"][omic].loc[te_idx] = m.predict(X_te)
-                feats = X_tr.columns[np.flatnonzero(m.best_estimator_.coef_)]
-                sel_features["ALasso"].extend(feats)
-
-            if "ElasticNet" in models:
-                m = clone(en).fit(X_tr, y.loc[tr_idx])
-                preds_lf["ElasticNet"][omic].loc[te_idx] = m.predict(X_te)
-                feats = X_tr.columns[np.flatnonzero(m.best_estimator_.coef_)]
-                sel_features["ElasticNet"].extend(feats)
-
-            if rf and "RandomForest" in models:
-                m = clone(rf).fit(X_tr, y.loc[tr_idx])
-                preds_lf["RandomForest"][omic].loc[te_idx] = m.predict(X_te)
-                feats = X_tr.columns[np.flatnonzero(m.best_estimator_.feature_importances_)]
-                sel_features["RandomForest"].extend(feats)
-
-            if xgb and "XGBoost" in models:
-                m = clone(xgb).fit(X_tr, y.loc[tr_idx])
-                preds_lf["XGBoost"][omic].loc[te_idx] = m.predict(X_te)
-                feats = X_tr.columns[np.flatnonzero(m.best_estimator_.feature_importances_)]
-                sel_features["XGBoost"].extend(feats)
-
-        # ===== 3-B. Late-fusion (si demandée) ====================
-        if late_fusion:
-            lf_preds = late_fusion_cv(
-                predictions_dict = {m: pd.concat(omic_dict, axis=1)
-                                    for m, omic_dict in preds_lf.items()},
-                y                = y.loc[te_idx],
-                task_type        = task_type,
-                save_path        = cv_dir,
-                n_iter           = n_iter_lf,
-            )
-            for m, ser in lf_preds.items():
-                preds_dict[m].loc[te_idx, f"Fold{fold}"] = ser
-        else:
-            # par défaut : moyenne simple des omiques
-            for m in preds_lf:
-                preds_dict[m].loc[te_idx, f"Fold{fold}"] = \
-                    pd.concat(preds_lf[m], axis=1).mean(axis=1)
-
-        # ===== 3-C. Modèles STABL “final” ========================
-        for m in filter(lambda s: "STABL" in s, models):
-            feats = sel_features[m]
-            if len(feats) == 0:
-                preds_dict[m].loc[te_idx, f"Fold{fold}"] = np.nan
-                continue
-
-            X_tr_sel = X_tot.loc[tr_idx, feats]
-            X_te_sel = X_tot.loc[te_idx, feats]
-
-            pipe2 = Pipeline([
-                ("imp", SimpleImputer(strategy="median")),
-                ("std", StandardScaler())
-            ])
-            X_tr_sel = pipe2.fit_transform(X_tr_sel)
-            X_te_sel = pipe2.transform (X_te_sel)
-
-            # --- petit “final model” basique (lin reg)
-            from sklearn.linear_model import LinearRegression
-            fm = LinearRegression().fit(X_tr_sel, y.loc[tr_idx])
-            preds_dict[m].loc[te_idx, f"Fold{fold}"] = fm.predict(X_te_sel)
-
-    # ===== 4. Scores & export ====================================
-    preds_median = {m: df.median(axis=1) for m, df in preds_dict.items()}
-
-    scores = _safe_scores(preds_median, y)
-    scores.to_csv(summary_dir/"Scores_training_CV.csv")
-
-    pvals  = compute_pvalues_table(preds_median, y, task_type=task_type)
-    (summary_dir/"p_values").mkdir(exist_ok=True)
-    for m, df in pvals.items():
-        df.to_csv(summary_dir/f"p_values/{m}.csv")
-
-    save_plots(preds_median, y, task_type, summary_dir)
-
-    return preds_median

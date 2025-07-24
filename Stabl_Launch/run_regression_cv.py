@@ -85,7 +85,7 @@ def main():
     models = [
         "STABL Lasso",
         "STABL ALasso",
-        "STABL ElasticNet"
+        "STABL ElasticNet",
     ]
 
     print("Starting multi-omic STABL CV with late fusion...")
