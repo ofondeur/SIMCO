@@ -16,7 +16,7 @@ from xgboost import XGBRegressor
 from sklearn.model_selection import GroupShuffleSplit
 
 from stabl.cross_validation_drug_vs_dmso import cv_drug_vs_dmso
-from stabl_utils import get_estimators,split_features_by_stim,get_stims
+from stabl_utils import get_estimators,split_features_by_stim,get_stims,process_data
 
 def main():
     parser = argparse.ArgumentParser(description="Run STABL Regression CV with configurable inputs.")
@@ -54,23 +54,22 @@ def main():
     # --- Use Parsed Arguments ---
     notreat_features_path = args.notreat_features_path
     drug_to_use_list = ['PRA','LPZ','SALPZ','SA','MF','CHT','THF','RIF','MAP']
-    artificial_type_arg = args.artificial_type # Store the argument value
+    artificial_type_arg = args.artificial_type
     model_chosen=args.model_chosen
     outcome_path = "../Data/outcome_table_all_pre.csv"
 
     input_stem = Path(notreat_features_path).stem
     results_path=args.results_dir
     fold_feats_path=args.fold_feats_path
+    print(f"Input Features: {notreat_features_path}")
     print(f"Results will be saved to: {results_path}")
     print(f"Using STABL artificial type: {artificial_type_arg}")
+    print(f"Model chosen: {model_chosen}")
+    print(f"Using fold features from: {fold_feats_path}")
+    
     os.makedirs(results_path, exist_ok=True)
 
-    df_features_no_treat = pd.read_csv(notreat_features_path, index_col=0)
-    df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
-    df_outcome = df_outcome[df_outcome.index.isin(df_features_no_treat.index)]
-    y = df_outcome["DOS"]
-
-    df_features_no_treat = df_features_no_treat[df_features_no_treat.index.isin(y.index)]
+    df_features_no_treat, y = process_data(notreat_features_path, outcome_path)
 
     stims=get_stims(input_stem)
 

@@ -20,7 +20,7 @@ from sklearn.model_selection import GroupShuffleSplit
 from xgboost import XGBRegressor
 from stabl.cross_validation_drug_vs_dmso import cv_on_existing_feats
 from sklearn.ensemble import RandomForestRegressor
-from stabl_utils import get_estimators,split_features_by_stim,get_stims
+from stabl_utils import get_estimators,split_features_by_stim,get_stims,process_data
 
 def main():
     parser = argparse.ArgumentParser(description="Run STABL Regression CV with configurable inputs.")
@@ -64,16 +64,11 @@ def main():
     print(f"Input Features: {features_path}")
     print(f"Results will be saved to: {results_path}")
     print(f"Using STABL artificial type: {artificial_type_arg}")
+    print(f"Using fold features from: {fold_feats_path}")
+    print(f"Model chosen: {model_chosen}")
     os.makedirs(results_path, exist_ok=True)
 
-
-    # Load features and outcomes
-    df_features = pd.read_csv(features_path, index_col=0)
-    df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
-    df_outcome = df_outcome[df_outcome.index.isin(df_features.index)]
-    y = df_outcome["DOS"]
-
-    df_features = df_features[df_features.index.isin(y.index)]
+    df_features, y = process_data(features_path, outcome_path)
 
     input_stem = Path(features_path).stem
     stims=get_stims(input_stem)

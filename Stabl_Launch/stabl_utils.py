@@ -83,3 +83,13 @@ def get_stims(input_stem):
     else:
         print(f"Warning: Could not determine stims from filename stem '{input_stem}'. Using default full list.")
         return ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
+
+def process_data(features_path, outcome_path):
+    df_features = pd.read_csv(features_path, index_col=0)
+    df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
+    df_outcome = df_outcome[df_outcome.index.isin(df_features.index)]
+
+    y = df_outcome["DOS"]
+    df_features = df_features[df_features.index.isin(y.index)]
+    return df_features, y
+

@@ -15,7 +15,7 @@ Results (including scores, plots and selected features) are saved to:
 
 import os
 import sys
-from stabl_utils import get_estimators,split_features_by_stim,get_stims
+from stabl_utils import get_estimators,split_features_by_stim,get_stims, process_data
 sys.path.insert(0, '../Stabl')
 from pathlib import Path
 import numpy as np
@@ -65,16 +65,11 @@ def main():
     print(f"Input Features: {features_path}")
     print(f"Results will be saved to: {results_path}")
     print(f"Using STABL artificial type: {artificial_type_arg}")
+    print(f"Model chosen: {model_chosen}")
     os.makedirs(results_path, exist_ok=True)
 
-    # Load features and outcomes, index should be in column 0
-    df_features = pd.read_csv(features_path, index_col=0)
-    df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
-    df_outcome = df_outcome[df_outcome.index.isin(df_features.index)]
+    df_features, y = process_data(features_path, outcome_path)
 
-    y = df_outcome["DOS"]
-    df_features = df_features[df_features.index.isin(y.index)]
-    
     stims=get_stims(input_stem)
 
     data_dict=split_features_by_stim(df_features, stims)
