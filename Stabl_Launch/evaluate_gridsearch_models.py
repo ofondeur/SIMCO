@@ -54,7 +54,7 @@ for run_dir in sorted(glob(os.path.join(root_path, "run_*"))):
         results.append({
             "Run": run_id,
             "AUROC": roc_auc,
-            "RMSE global": rmse_all,
+            "RMSE": rmse_all,
             "Pearson R": correlation_pearson
         })
 
