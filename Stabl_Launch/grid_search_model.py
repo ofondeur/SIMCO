@@ -20,7 +20,7 @@ from sklearn.model_selection import GroupShuffleSplit
 from xgboost import XGBRegressor
 from stabl.cross_validation_drug_vs_dmso import cv_on_existing_feats
 from sklearn.ensemble import RandomForestRegressor
-from stabl_utils import get_estimators,split_features_by_stim
+from stabl_utils import get_estimators,split_features_by_stim,get_stims
 
 def main():
     parser = argparse.ArgumentParser(description="Run STABL Regression CV with configurable inputs.")
@@ -76,19 +76,7 @@ def main():
     df_features = df_features[df_features.index.isin(y.index)]
 
     input_stem = Path(features_path).stem
-    if "unstim_only" in input_stem.lower():
-        stims = ['Unstim']
-        print("Detected Unstim-only input file. Using stims:", stims)
-    elif "no_unstim" in input_stem.lower():
-        stims = ['TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
-        print("Detected Filtered Predicted Stims input file. Using stims:", stims)
-    elif "merged" in input_stem.lower():
-        stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
-        stims=[f"{stim}_OOL" for stim in stims] + [f"{stim}_CellOT" for stim in stims]
-        print("Detected merged (OOL+ predicted stims) input file. Using stims:", stims)
-    else:
-        print(f"Warning: Could not determine stims from filename stem '{input_stem}'. Using default full list.")
-        stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
+    stims=get_stims(input_stem)
 
     data_dict=split_features_by_stim(df_features, stims)
     if not data_dict:

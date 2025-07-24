@@ -68,3 +68,18 @@ def split_features_by_stim(df_features, stims):
         else:
             print(f"Warning: No columns found for stim '{stim}'.")
     return data_dict
+
+def get_stims(input_stem):
+    if "unstim_only" in input_stem.lower():
+        print("Detected Unstim-only input file. Using stims:", stims)
+        return ['Unstim']
+    elif "no_unstim" in input_stem.lower():
+        print("Detected only Stims input file. Using stims:", stims)
+        return ['TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
+    elif "merged" in input_stem.lower():
+        print("Detected merged (OOL+ predicted stims) input file. Using stims:", stims)
+        stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
+        return [f"{stim}_OOL" for stim in stims] + [f"{stim}_CellOT" for stim in stims]
+    else:
+        print(f"Warning: Could not determine stims from filename stem '{input_stem}'. Using default full list.")
+        return ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
