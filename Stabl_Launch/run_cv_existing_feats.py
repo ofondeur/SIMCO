@@ -12,9 +12,7 @@ from tqdm import tqdm
 import argparse
 import json
 from xgboost import XGBRegressor
-
 from sklearn.model_selection import GroupShuffleSplit
-
 from stabl.cross_validation_drug_vs_dmso import cv_drug_vs_dmso
 from stabl_utils import get_estimators,split_features_by_stim,get_stims,process_data
 
@@ -25,7 +23,12 @@ def main():
         required=True,
         help="Path to the not treated features CSV file (wide format)."
     )
-
+    parser.add_argument(
+        "--use_ega",
+        type=bool,
+        default=False,
+        help="Whether to use EGA features (True/False)."
+    )
     parser.add_argument(
         "--fold_feats_path",
         required=True,
@@ -55,6 +58,7 @@ def main():
     notreat_features_path = args.notreat_features_path
     drug_to_use_list = ['PRA','LPZ','SALPZ','SA','MF','CHT','THF','RIF','MAP']
     artificial_type_arg = args.artificial_type
+    use_ega = args.use_ega
     model_chosen=args.model_chosen
     outcome_path = "../Data/outcome_table_all_pre.csv"
 
@@ -130,7 +134,8 @@ def main():
         outer_groups=groups,       
         early_fusion=False,
         late_fusion=False,
-        n_iter_lf=100000
+        n_iter_lf=100000,
+        use_ega=use_ega
     )
 
     for model in models:
