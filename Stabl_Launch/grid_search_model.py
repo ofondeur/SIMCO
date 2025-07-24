@@ -75,6 +75,7 @@ def main():
 
     df_features = df_features[df_features.index.isin(y.index)]
     stims = ['Unstim','TNFa', 'LPS', 'IL246', 'IFNa', 'GMCSF', 'PI', 'IL33']
+    stims = [f"{stim}_OOL" for stim in stims] + [f"{stim}_CellOT" for stim in stims]
     data_dict=split_features_by_stim(df_features, stims)
     if not data_dict:
         raise ValueError("No stim-specific features found. Please check your feature names.")

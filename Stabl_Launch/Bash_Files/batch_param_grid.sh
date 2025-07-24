@@ -16,7 +16,6 @@ PARAM_FILE="../param_grid_files/params_96.json"
 python ../run_cv_existing_feats.py \
     --notreat_features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
     --fold_feats_path ../Results/results_ina_13OG_final_long_allstims_filtered_xgboost_knockoff_GSS \
-    --results_dir ../Results/comp_9drugs_long_pred_96_v3/run_${SLURM_ARRAY_TASK_ID} \
+    --results_dir ../Results/comp_9drugs_long_pred_96_tr_vfin/run_${SLURM_ARRAY_TASK_ID} \
     --artificial_type knockoff \
-    --model_chosen xgboost \
-    --xgb_config_path $PARAM_FILE
+    --model_chosen xgboost
