@@ -9,7 +9,7 @@
 #SBATCH --array=0-167
 module load python/3.9.0
 
-VENV_PATH="../cellot_venv/bin/activate"
+VENV_PATH="../../test_venv-cellot2/bin/activate"
 if [ -f "$VENV_PATH" ]; then
     source "$VENV_PATH"
 else
