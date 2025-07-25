@@ -1,9 +1,6 @@
 import os
 import anndata as ad
-from cellot.utils.helpers import load_config
-from cellot.utils.loaders import load
-from cellot.models.cellot import load_networks
-from cellot.data.cell import read_list
+from prediction_utils import load_data_networks_drug_OOL
 from cellot.data.cell import AnnDataDataset
 from torch.utils.data import DataLoader
 import torch
@@ -17,40 +14,13 @@ from scipy import sparse
 
 model = 'original_13_HVPV'
 
-def predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, patient,drug_used):
-    config_path = os.path.join(result_path, "config.yaml")
-    chkpt = os.path.join(result_path, "cache/model.pt")
-    
-    feats_input_path= os.path.join(result_path, "features_input_names.txt")
-    feats_eval_path= os.path.join(result_path, "features_eval_names.txt")
-    semisuffled_features_path= os.path.join(result_path, "semisuffled_features.txt")
-    
-    if os.path.exists(feats_eval_path):
-        features_eval = read_list(feats_eval_path)
-        features_input = read_list(feats_input_path)
-        semisuffled_features = read_list(semisuffled_features_path)
-    else:
-        features_eval = read_list('/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/13features.txt')
-        features_input = features_eval
-        semisuffled_features = features_eval
-    config = load_config(config_path)
-    if not Path(chkpt).exists():
-        print(f"[ERROR] Checkpoint missing at: {chkpt}", flush=True)
-        return
-    model_kwargs = {}
-    model_kwargs["input_dim"] = len(features_input)
-    restore=chkpt
-    _, g = load_networks(config, **model_kwargs)
-    if restore is not None and Path(restore).exists():
-        ckpt = torch.load(restore)
-        g.load_state_dict(ckpt["g_state"])
-    g.eval()
-    
-    # load the data to predict
-    anndata_to_predict = ad.read_h5ad(unstim_data_path)
-    
-    anndata_to_predict=anndata_to_predict[(anndata_to_predict.obs['stim']==stim)&(anndata_to_predict.obs['cell_type']==cell_type)].copy()
-    
+def predict_per_patient_unstim_treated(result_path, unstim_data_path, stim, model, cell_type, patient,drug_used):
+    anndata_to_predict, g, features_eval, features_input, semisuffled_features= load_data_networks_drug_OOL(
+        result_path=result_path,
+        unstim_data_path=unstim_data_path,
+        stim=stim,
+        cell_type=cell_type
+    )
     untreated_anndata_to_predict = anndata_to_predict[:, features_input].copy() # filter the input on the markers we want to use to predict
     stims_in_data=untreated_anndata_to_predict.obs['stim'].unique().tolist()
     drugs_in_data=untreated_anndata_to_predict.obs['drug'].unique().tolist()
@@ -100,8 +70,8 @@ def sanitize_name(name):
     return name
 for drug_used in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']:
     all_results = []
-    csv_path = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/ina_13OG_{drug_used}_unstim.csv"
-    path_patients_ina='/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/patients_ina.txt'
+    csv_path = f"../results/ina_13OG_{drug_used}_unstim.csv"
+    path_patients_ina='../datasets/ptb_concatenated_per_condition_celltype/patients_ina.txt'
     with open(path_patients_ina, 'r') as f:
         patients_ina_list = [line.strip() for line in f if line.strip()]
     existing_patients = set()
@@ -115,8 +85,8 @@ for drug_used in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']
         except Exception as e:
             print(f"[WARN] Failed to read existing CSV: {e}")
             first_write = True
-            
-    OUTPUT_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ool_by_patient/unstim_final"
+
+    OUTPUT_DIR = "../datasets/ool_by_patient/unstim_final"
     stim='Unstim'
     with open(csv_path, "a") as f:
         for patient in patients_ina_list:
@@ -127,8 +97,8 @@ for drug_used in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']
             patient_row = {"Individual": patient}
             for cell_type in cells_list:
                 sanitized_cell_type=sanitize_name(cell_type)
-                result_path = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results_unstim/cross_validation_drug_OG13/{drug_used}/{sanitized_cell_type}/model-Unstim_{sanitized_cell_type}"
-                unstim_data_path = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ool_by_patient/unstim_final/{patient}_Unstim.h5ad"
+                result_path = f"../results_unstim/cross_validation_drug_OG13/{drug_used}/{sanitized_cell_type}/model-Unstim_{sanitized_cell_type}"
+                unstim_data_path = f"../datasets/ool_by_patient/unstim_final/{patient}_Unstim.h5ad"
                 model_file = os.path.join(result_path, "cache/model.pt")
                 if not os.path.exists(model_file):
                     print(f"[SKIP] No model for {stim} / {cell_type}, {model_file}",flush=True)
@@ -136,7 +106,7 @@ for drug_used in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']
                 if not os.path.exists(unstim_data_path):
                     print(f"[SKIP] No data for {stim} / {cell_type}, {unstim_data_path}",flush=True)
                     continue
-                row = predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, patient,drug_used)
+                row = predict_per_patient_unstim_treated(result_path, unstim_data_path, stim, model, cell_type, patient,drug_used)
                 if row:
                     del row["Individual"]
                     patient_row.update(row)

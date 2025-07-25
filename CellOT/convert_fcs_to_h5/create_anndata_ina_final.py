@@ -9,12 +9,12 @@ import sys
 from tqdm import tqdm
 
 # ===== User‐defined directories =====
-RAW_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot_pheno/cells_combined/raw_data/ool"
-OUTPUT_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ool_by_patient/unstim_gated"
+RAW_DIR = "../cellot_pheno/cells_combined/raw_data/ool"
+OUTPUT_DIR = "../datasets/ool_by_patient/unstim_gated"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ===== Expected factors =====
-path_patients_ina = '/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/patients_ina.txt'
+path_patients_ina = '../datasets/ptb_concatenated_per_condition_celltype/patients_ina.txt'
 with open(path_patients_ina, 'r') as f:
     EXPECTED_PATIENTS = [line.strip() for line in f if line.strip()]
 print(EXPECTED_PATIENTS)

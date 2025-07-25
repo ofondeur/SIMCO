@@ -80,7 +80,7 @@ def compute_group_medians(df, markers):
 model='original' # choose among 'original','all_markers','original_median_20marks','original_20marks'...
 
 
-FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
+FOLD_INFO_FILE = f"../datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
 fold_info = defaultdict(lambda: defaultdict(dict)) # Structure: fold_info[stim][sanitized_celltype][fold_index] = [test_patient1, ...]
 stim_celltype_pairs_in_folds = set() # Keep track of (stim, original_celltype) pairs processed
 try:
@@ -106,12 +106,12 @@ except Exception as e:
 
 
 
-PTB_ANNDATA_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype"
-MODEL_BASE_DIR = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}_2"
+PTB_ANNDATA_DIR = "../datasets/ptb_concatenated_per_condition_celltype"
+MODEL_BASE_DIR = f"../results/cross_validation_{model}_2"
 drug_used='DMSO'
 
 def main():
-    out_dir = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/cellwise/cross_validation_{model}_mmd"
+    out_dir = f"../cellwise/cross_validation_{model}_mmd"
 
     os.makedirs(out_dir, exist_ok=True)
     baseline_store = {}
@@ -139,7 +139,7 @@ def main():
                 df_all = load_anndata_to_df(pred_path,drug_used)
     
                 df_baseline = df_all[(df_all["state"] == "true_corrected") & (df_all["stim"] == "Unstim")]
-                with open(f'/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/features_evaluation/features_{stim}_{sanitized_celltype}.txt') as f:
+                with open(f"../datasets/ptb_concatenated_per_condition_celltype/features_evaluation/features_{stim}_{sanitized_celltype}.txt") as f:
                     markers = [line.strip() for line in f if line.strip()]
 
                 baseline_medians = compute_group_medians(df_baseline,markers)

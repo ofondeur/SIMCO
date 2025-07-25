@@ -4,12 +4,12 @@ from pathlib import Path
 # This script generates a CSV file containing fold information for cross-validation in a drug screening dataset.
 """
 model='original_20marks'
-CV_DIR = Path(f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}")
+CV_DIR = Path(f"../results/cross_validation_{model}")
 
-VALID_JOBS_PATH = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/valid_jobs.txt"
+VALID_JOBS_PATH = "../datasets/ptb_concatenated_per_condition_celltype/valid_jobs.txt"
 
 NUM_FOLDS = 4
-OUTPUT_CSV = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
+OUTPUT_CSV = f"../datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
 
 rows = []
 

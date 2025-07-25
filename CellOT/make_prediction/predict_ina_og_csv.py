@@ -1,9 +1,6 @@
 import os
 import anndata as ad
-from cellot.utils.helpers import load_config
-from cellot.utils.loaders import load
-from cellot.models.cellot import load_networks
-from cellot.data.cell import read_list
+from prediction_utils import load_data_networks_stimspred_OOL
 from cellot.data.cell import AnnDataDataset
 from torch.utils.data import DataLoader
 import torch
@@ -45,58 +42,20 @@ celltype_name_map = {
     'ncMCs': 'ncMCs',
     'pDCs': 'pDCs'
 }
-def load_patient_anndata(data_path, patient, cell_type, drug_prefix):
-    adata = ad.read_h5ad(data_path, backed='r')  # accès sur disque
-    mask = (
-        (adata.obs['stim'] == 'Unstim') &
-        (adata.obs['cell_type'] == celltype_name_map[cell_type]) &
-        (adata.obs['drug'].str.startswith(drug_prefix)) &
-        (adata.obs['sampleID'] == patient)
-    )
-    
-    subset = adata[mask].to_memory()
-    adata.file.close()
-    return subset
-    
-def predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, patient):
-    config_path = os.path.join(result_path, "config.yaml")
-    chkpt = os.path.join(result_path, "cache/model.pt")
 
-    feats_input_path = os.path.join(result_path, "features_input_names.txt")
-    feats_eval_path = os.path.join(result_path, "features_eval_names.txt")
-    semisuffled_features_path = os.path.join(result_path, "semisuffled_features.txt")
-    if os.path.exists(feats_eval_path):
-        features_eval = read_list(feats_eval_path)
-        features_input = read_list(feats_input_path)
-        semisuffled_features = read_list(semisuffled_features_path)
-    else:
-        features_eval = read_list('/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/13features.txt')
-        features_input = features_eval
-        semisuffled_features = features_eval
-    config = load_config(config_path)
-    if not Path(chkpt).exists():
-        print(f"[ERROR] Checkpoint missing at: {chkpt}", flush=True)
-        return
-    model_kwargs = {}
-    model_kwargs["input_dim"] = len(features_input)
-    restore=chkpt
-    _, g = load_networks(config, **model_kwargs)
-    if restore is not None and Path(restore).exists():
-        ckpt = torch.load(restore)
-        g.load_state_dict(ckpt["g_state"])
-    g.eval()
-    anndata = load_patient_anndata(
-        data_path=unstim_data_path,
-        patient=patient,
+    
+def predict_per_patient_stim_dmso_csv(result_path, unstim_data_path, stim, model, cell_type, patient):
+    
+    anndata, g, features_eval, features_input, semisuffled_features = load_data_networks_stimspred_OOL(
+        result_path=result_path,
+        unstim_data_path=unstim_data_path,
+        stim=stim,
+        model=model,
         cell_type=cell_type,
-        drug_prefix=drug_used,
+        patient=patient,
+        drug_used=drug_used,
+        celltype_name_map=celltype_name_map
     )
-
-    if anndata.shape[0] == 0:
-        print(f"[WARN] No data for patient {patient}, stim {stim}, cell {cell_type}", flush=True)
-        return
-
-    anndata = anndata[:, features_input].copy()
     true_medians = np.median(anndata.X, axis=0)
     true_result = {
         f"{cell_type}_{marker}_Unstim": val
@@ -128,7 +87,7 @@ def predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, p
     return result
 
 # Load fold info
-FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_original_median_20marks.csv"
+FOLD_INFO_FILE = f"../datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_original_median_20marks.csv"
 fold_info = defaultdict(lambda: defaultdict(dict))
 with open(FOLD_INFO_FILE, 'r') as f:
     for line in f.readlines()[1:]:
@@ -138,12 +97,12 @@ with open(FOLD_INFO_FILE, 'r') as f:
         stim, sanitized_ct, original_ct, fold_idx, *patients = parts
         fold_info[stim][sanitized_ct][int(fold_idx)] = patients
 
-MODEL_BASE_DIR = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}"
+MODEL_BASE_DIR = f"../results/cross_validation_{model}"
 
 print(f"[INFO] Starting predictions")
 all_results = []
-csv_path = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/ina_13OG_final_long.csv"
-path_patients_ina='/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/patients_ina.txt'
+csv_path = "../results/ina_13OG_final_long.csv"
+path_patients_ina='../datasets/ptb_concatenated_per_condition_celltype/patients_ina.txt'
 with open(path_patients_ina, 'r') as f:
     patients_ina_list = [line.strip() for line in f if line.strip()]
 existing_patients = set()
@@ -157,8 +116,8 @@ if not first_write:
     except Exception as e:
         print(f"[WARN] Failed to read existing CSV: {e}")
         first_write = True
-        
-OUTPUT_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ool_by_patient/unstim_final"     
+
+OUTPUT_DIR = "../datasets/ool_by_patient/unstim_final"
 with open(csv_path, "a") as f:
     for patient in patients_ina_list:
         if patient in existing_patients:
@@ -175,7 +134,7 @@ with open(csv_path, "a") as f:
                     print(f"[SKIP] No model for {stim} / {cell_type}")
                     continue
 
-                row = predict_per_patient(result_path, unstim_data_path, stim, model, cell_type, patient)
+                row = predict_per_patient_stim_dmso_csv(result_path, unstim_data_path, stim, model, cell_type, patient)
                 if row:
                     del row["Individual"]
                     patient_row.update(row)

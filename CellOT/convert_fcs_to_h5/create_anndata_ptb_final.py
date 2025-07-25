@@ -8,8 +8,8 @@ import fcsparser
 import sys
 from tqdm import tqdm
 
-RAW_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cells_combined/raw_data/ptb_final_rawdata"
-OUTPUT_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_to_batchcorrect" # Changed output dir name
+RAW_DIR = "../cells_combined/raw_data/ptb_final_rawdata"
+OUTPUT_DIR = "../datasets/ptb_concatenated_to_batchcorrect" # Changed output dir name
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ===== Expected factors =====

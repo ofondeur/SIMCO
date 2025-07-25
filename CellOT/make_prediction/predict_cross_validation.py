@@ -71,7 +71,7 @@ def predict_from_unstim_data(result_path, unstim_data_path, output_path,stim,tes
 
 model='original_20marks'
 
-FOLD_INFO_FILE = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
+FOLD_INFO_FILE = f"../datasets/ptb_concatenated_per_condition_celltype/ptb_cellwise_variance_cv_fold_info_{model}.csv"
 fold_info = defaultdict(lambda: defaultdict(dict)) # Structure: fold_info[stim][sanitized_celltype][fold_index] = [test_patient1, ...]
 stim_celltype_pairs_in_folds = set()
 try:
@@ -98,8 +98,8 @@ except Exception as e:
     sys.exit(f"FATAL ERROR: Failed to read fold info file: {e}")
 
 
-PTB_ANNDATA_DIR = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype"
-MODEL_BASE_DIR = f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/results/cross_validation_{model}"
+PTB_ANNDATA_DIR = "../datasets/ptb_concatenated_per_condition_celltype"
+MODEL_BASE_DIR = f"../results/cross_validation_{model}"
 
 print(f"[INFO] Beginning predicting")
 for stim in fold_info:
@@ -111,7 +111,7 @@ for stim in fold_info:
             result_path = f"{MODEL_BASE_DIR}/{stim}/{sanitized_celltype}/model-{stim}_{sanitized_celltype}_fold{fold_number}"
             output_path = f"{MODEL_BASE_DIR}/{stim}/{sanitized_celltype}/model-{stim}_{sanitized_celltype}_fold{fold_number}/pred_CV_{model}.h5ad"
             fold_path = f"{MODEL_BASE_DIR}/{stim}/{sanitized_celltype}/model-{stim}_{sanitized_celltype}_fold{fold_number}"
-            feats_eval_path=f"/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/features.txt"
+            feats_eval_path=f"../datasets/ptb_concatenated_per_condition_celltype/features.txt"
             if (not os.path.exists(output_path)) and (os.path.exists(result_path)) and (os.path.exists(fold_path)):
                 predict_from_unstim_data(result_path, unstim_data_path, output_path, stim,test_patients,feats_eval_path)
         print(f"[INFO] Predicted {sanitized_celltype} for {stim}")

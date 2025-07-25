@@ -186,8 +186,6 @@ def train_cellot(outdir, config):
             try:
                 iterator_test_target = iterator.test.target[key]
                 iterator_test_source = iterator.test.source[key]
-            # in the iid mode of the ood setting,
-            # train and test keys are not necessarily the same ...
             except KeyError:
                 test_key = random.choice(test_keys)
                 iterator_test_target = iterator.test.target[test_key]
@@ -199,7 +197,6 @@ def train_cellot(outdir, config):
             iterator_test_target = iterator.test.target
             iterator_test_source = iterator.test.source
 
-        # target = next(iterator_train_target)
         if iterator_train_source is None:
             print("Error: iterator.train.source is None at step", step)
         else:

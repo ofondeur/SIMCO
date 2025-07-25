@@ -5,9 +5,9 @@ import pandas as pd
 Script to generate a job list for cell-wise training based on a knowledge table.
 """
 
-KNOWLEDGE_TABLE_PATH = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/cross_validation/PenMatrix_HV.csv"
-JOB_LIST_OUTPUT_PATH = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype/valid_jobs2.txt"
-BASE_DIR_FOR_OUTPUT = "/home/groups/gbrice/ptb-drugscreen/ot/cellot/datasets/ptb_concatenated_per_condition_celltype"
+KNOWLEDGE_TABLE_PATH = "../cross_validation/PenMatrix_HV.csv"
+JOB_LIST_OUTPUT_PATH = "../datasets/ptb_concatenated_per_condition_celltype/valid_jobs2.txt"
+BASE_DIR_FOR_OUTPUT = "../datasets/ptb_concatenated_per_condition_celltype"
 
 os.makedirs(BASE_DIR_FOR_OUTPUT, exist_ok=True)
 
