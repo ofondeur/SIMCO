@@ -3,31 +3,36 @@
 
 **Authors**: Jakob Einhaus\*, Peter Neidlinger\*, Olivier Fondeur\*, Masaki Sato\*, Brice Gaudilliere
 
-We present a prediction ensemble that combines outcome modeling and treatment evaluation on simulated single-cell data to rapidly evaluate multiple drug candidates for their potential to shift the timing of labor and prevent PTB.
+# PTB Drug Response Prediction
 
-We trained CellOT, a neural optimal transport (OT) model, to learn single-cell perturbation behavior for 28 immune cell types. We then trained a Stabl model to identify a sparse number of features able to accurately predict the time to labor for each sample. Finally, we used the trained model on simulated treatment effect to quantify the effect of the drugs on time to labor. Simulated treatment effects shifted predicted time to labor, enabling individual-level evaluation and personalized treatment selection. 
+We present a prediction ensemble that integrates outcome modeling with treatment effect estimation on simulated single-cell data to efficiently evaluate multiple drug candidates for their potential to delay labor and prevent preterm birth (PTB).
 
-This repository contains the CellOT scripts to predict single-cell perturbation behavior and the Stabl scripts to predict the time to labor.
+We first trained **CellOT**, a neural optimal transport (OT) model, to learn cell-type-specific perturbation responses across 28 immune cell populations. Next, we trained a **Stabl** model to identify a sparse set of features that accurately predict time to labor for each sample. Finally, we applied the trained models to simulated treatment effects in order to quantify each drug's impact on labor timing. By simulating drug responses at the single-cell level, our framework enables personalized evaluation of candidate therapies for PTB prevention.
+
+![Framework overview](figures/presentation_figure.png)
+
+> *Figure: Overview of the modeling pipeline. CellOT learns perturbation effects at the single-cell level, which are then passed to Stabl to predict time to labor. Simulated drug responses enable individual-level treatment evaluation.*
+
+## Repository contents
+
+- `Cellot/`: Scripts and utilities to train and apply the CellOT model for single-cell perturbation modeling.
+- `Stabl/`: Stabl package scripts.
+- `Stabl_Launch/`: Scripts to train Stabl models for outcome prediction and treatment effect evaluation.
 
 ## Installation
 
-To setup the corresponding `conda` environment run:
+To setup the corresponding virtual environment run:
 ```
-conda create --name cellot python=3.9.5
-conda activate cellot
-
-conda update -n base -c defaults conda
-pip install --upgrade pip
+python3.9 -m venv Common_venv
+source Common_venv/bin/activate
+pip install —upgrade pip
+pip install setuptools==49.6.0
 ```
 Install requirements and dependencies via:
 ```
-pip install -r requirements.txt
+pip install -r Requirements/Common_requirements.txt
 ```
-To install `CellOT` run:
-```
-python setup.py develop
-```
-Package requirements and dependencies are listed in `requirements.txt`. Installation takes < 5 minutes and has been tested on Linux (CentOS Linux release 7.9.2009), macOS (Version 12.4, with Apple M1 Pro and Version 11.3, with 2.6 GHz Intel Core i7). 
+Package requirements and dependencies for CellOT and Stabl are listed in `Requirements`. Installation takes < 5 minutes and has been tested on Sherlock (CentOS Linux 7 Core environment) and macOS (Version 15.5, with Apple M4).
 
 ## Datasets
 You can download the preprocessed data [here]().
@@ -39,10 +44,10 @@ The CellOT models can be trained for each stim-cell type combination using the s
 For example, to run CellOT on the ptb data for PI stimulation on cMCs using the healthy patients DMSO samples the script would be:
 
 ```
-python ./scripts/train.py \
-      --config ./configs/models/cellot.yaml \
-      --config ./configs/tasks/ptb_final_cv_original/HV/ptb_PI_cMCs_HV_train.yaml \
-      --outdir ./results/cross_validation_original/PI/cMCs/model-PI_cMCs \
+python ../cellot/scripts/train.py \
+      --config ../configs/models/cellot.yaml \
+      --config ../configs/tasks/ptb_final_cv_original/HV/ptb_PI_cMCs_HV_train.yaml \
+      --outdir ../results/cross_validation_original/PI/cMCs/model-PI_cMCs \
       --config.data.target PI \
       --config.data.drug_used DMSO
 ```
