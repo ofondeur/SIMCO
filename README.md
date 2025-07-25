@@ -34,9 +34,9 @@ You can download the preprocessed data [here]().
 
 ## Experiments
 
-The CellOT models can be trained for each stim-cell type combination using the scripts in CellOT/sbatch_files such as CellOT/sbatch_files/train_cellot_cellwise_cv.sh.
+The CellOT models can be trained for each stim-cell type combination using the scripts in CellOT/sbatch_files such as ```train_cellot_cellwise_cv.sh```.
 
-For example, to run CellOT on the ptb data for PI stimulation on cMCS using the healthy patients DMSO sample the script would be:
+For example, to run CellOT on the ptb data for PI stimulation on cMCs using the healthy patients DMSO samples the script would be:
 
 ```
 python ../cellot/scripts/train.py \
@@ -49,7 +49,7 @@ python ../cellot/scripts/train.py \
 
 The Stabl models can be trained using the scripts in Stabl_Launch/Bash_Files such as batch_stabl model.sh. The other .sh files launch a cross-validation on features already selected to perform a grid-search on XGBoost hyperparameters (e.g. ```batch_gridsearch.sh```) or to compare the time to labour prediction for each drug treated data (e.g. ```run_drug_comparison.sh```).
 
-To run a Stabl model on predicted perturbation and unstim data, for a knockoff artifical type and an xgboost final model, the script would be:
+To run a Stabl model on predicted perturbation and unstim data, for a knockoff artificial type and an xgboost final model, the script would be:
 ```
 python ../run_regression_cv.py \
     --features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
