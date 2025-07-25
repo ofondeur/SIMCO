@@ -11,7 +11,7 @@ module load python/3.9.0
 
 source cellot_sherlock_venv/bin/activate
 
-python ./scripts/train.py \
+python ../scripts/train.py \
   --outdir ./results/cmcs_LPS_dblcorr_inputmodif_noeval/model-cellot \
   --config "./configs/tasks/perio_surge_train_dbl_corr/perio_data_sherlock_P._gingivalis_Classical_Monocytes_(CD14+CD16-)_train2.yaml" \
   --config ./configs/models/cellot.yaml \

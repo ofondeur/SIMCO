@@ -39,10 +39,10 @@ The CellOT models can be trained for each stim-cell type combination using the s
 For example, to run CellOT on the ptb data for PI stimulation on cMCs using the healthy patients DMSO samples the script would be:
 
 ```
-python ../cellot/scripts/train.py \
-      --config ../configs/models/cellot.yaml \
-      --config ../configs/tasks/ptb_final_cv_original/HV/ptb_PI_cMCs_HV_train.yaml \
-      --outdir ../results/cross_validation_original/PI/cMCs/model-PI_cMCs \
+python ./scripts/train.py \
+      --config ./configs/models/cellot.yaml \
+      --config ./configs/tasks/ptb_final_cv_original/HV/ptb_PI_cMCs_HV_train.yaml \
+      --outdir ./results/cross_validation_original/PI/cMCs/model-PI_cMCs \
       --config.data.target PI \
       --config.data.drug_used DMSO
 ```

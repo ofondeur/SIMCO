@@ -79,7 +79,7 @@ JOB_NAME_FULL="${stim}_${sanitized_celltype}"
 CONFIG_PATH_FULL="${CONFIG_DIR}/ptb_final_cv_${model}/${cv_condition}/ptb_${JOB_NAME_FULL}_${cv_condition}_train.yaml"
 OUTDIR_FULL="${RESULTS_DIR}/${stim}/${sanitized_celltype}/model-${JOB_NAME_FULL}"
 mkdir -p "${OUTDIR_FULL}"
-python ../cellot/scripts/train.py \
+python ../scripts/train.py \
       --config ../configs/models/cellot_steroids.yaml \
       --config "${CONFIG_PATH_FULL}" \
       --outdir "${OUTDIR_FULL}" \

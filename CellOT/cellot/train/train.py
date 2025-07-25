@@ -199,12 +199,9 @@ def train_cellot(outdir, config):
 
         if iterator_train_source is None:
             print("Error: iterator.train.source is None at step", step)
-        else:
-            print("iterator.train.source type:", type(iterator_train_source))
         
         try:
             target = next(iterator_train_target)
-            print("Train target obtained, shape:", target.shape)
         except Exception as e:
             print("Error obtaining train target:", e)
             raise e
