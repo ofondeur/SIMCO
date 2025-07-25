@@ -8,7 +8,7 @@ We present a prediction ensemble that integrates outcome modeling with treatment
 
 We first trained **CellOT**, a neural optimal transport (OT) model, to learn cell-type-specific perturbation responses across 28 immune cell populations. Next, we trained a **Stabl** model to identify a sparse set of features that accurately predict time to labor for each sample. Finally, we applied the trained models to simulated treatment effects in order to quantify each drug's impact on labor timing. By simulating drug responses at the single-cell level, our framework enables personalized evaluation of candidate therapies for PTB prevention.
 
-<p align='center'><img src='figures/presentation_figure.pdf' alt='Overview.' width='100%'> </p>
+<p align='center'><img src='figures/presentation_figure.pdf' width='100%'> </p>
 
 > *Figure: Overview of the modeling pipeline. CellOT learns perturbation effects at the single-cell level, which are then passed to Stabl to predict time to labor. Simulated drug responses enable individual-level treatment evaluation.*
 
