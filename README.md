@@ -72,6 +72,14 @@ The final models available are linear regression, XGBoost and Random Forest, wit
 In case you found our work useful, please consider citing us:
 ```
 ```
+## Licenses
+
+This repository includes code adapted from the following projects:
+
+- [CellOT](https://github.com/bunnech/cellot), licensed under the BSD 3-Clause License.
+- [STABL](https://github.com/gregbellan/Stabl), licensed under the BSD-3-Clause-Clear license.
+
+See `Cellot/LICENSE` and `Stabl/LICENSE` for more details.
 
 ## Contact
 In case you have questions, please contact us via the Github Issues.
