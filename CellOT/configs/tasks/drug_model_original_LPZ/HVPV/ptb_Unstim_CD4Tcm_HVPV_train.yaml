@@ -1,0 +1,17 @@
+data:
+  features: ../datasets/ptb_concatenated_per_condition_celltype/13features.txt
+  features_input: ../datasets/ptb_concatenated_per_condition_celltype/13features.txt
+  features_evaluation: ../datasets/ptb_concatenated_per_condition_celltype/13features.txt
+  path: ../datasets/ptb_concatenated_batchcorrected/CD4Tcm_HVPV.h5ad
+  condition: drug
+  source: DMSO1
+  type: cell
+
+dataloader:
+  batch_size: 256
+  shuffle: true
+
+datasplit:
+  groupby: drug
+  name: train_test
+  test_size: 0.2
