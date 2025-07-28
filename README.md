@@ -24,7 +24,7 @@ To setup the corresponding virtual environment run:
 ```
 python3.9 -m venv Common_venv
 source Common_venv/bin/activate
-pip install —upgrade pip
+pip install --upgrade pip
 pip install setuptools==49.6.0
 ```
 Install requirements and dependencies via:
