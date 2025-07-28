@@ -24,7 +24,7 @@ To setup the corresponding virtual environment run:
 ```
 python3.9 -m venv Common_venv
 source Common_venv/bin/activate
-pip install —upgrade pip
+pip install --upgrade pip
 pip install setuptools==49.6.0
 ```
 Install requirements and dependencies via:
@@ -72,6 +72,21 @@ The final models available are linear regression, XGBoost and Random Forest, wit
 In case you found our work useful, please consider citing us:
 ```
 ```
+
+## Acknowledgements and Licenses
+
+This repository includes code adapted from the following projects:
+
+- **[CellOT](https://github.com/ratschlab/cellot)**, licensed under the BSD 3-Clause License.  
+  If you use this code, please cite:  
+  > Bunne, Charlotte et al. *Learning single-cell perturbation responses using neural optimal transport*. **Nature Methods**, 2023. [https://doi.org/10.1038/s41592-023-02064-x](https://doi.org/10.1038/s41592-023-02064-x)
+
+- **[STABL](https://github.com/Gaudiss/Stabl)**, licensed under the BSD-3-Clause-Clear License.  
+  If you use this code, please cite:  
+  > Hédou, J., Marić, I., Bellan, G. et al. *Discovery of sparse, reliable omic biomarkers with Stabl*. **Nature Biotechnology**, 2024. [https://doi.org/10.1038/s41587-023-02033-x](https://doi.org/10.1038/s41587-023-02033-x)
+
+For more details, see the `LICENSE` files in [`CellOT/`](./CellOT/LICENSE) and [`Stabl/`](./Stabl/LICENSE).
+
 
 ## Contact
 In case you have questions, please contact us via the Github Issues.
