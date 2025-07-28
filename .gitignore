@@ -209,5 +209,6 @@ Stabl_venv/
 CellOT/cross_validation/batchcorrection_2.csv
 Stabl_Launch/Results/
 test/
-CellOT/datasets
 CellOT/results
+Common_venv/
+CellOT/datasets/ptb_concatenated_per_condition_celltype/cMCs_HV.h5ad
