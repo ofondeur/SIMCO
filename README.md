@@ -89,4 +89,4 @@ For more details, see the `LICENSE` files in [`CellOT/`](./CellOT/LICENSE) and [
 
 
 ## Contact
-In case you have questions, please contact us via the Github Issues.
+In case you have questions, please contact us via email: jeinhaus@stanford.edu, ofondeur@stanford.edu, or gbrice@stanford.edu.
