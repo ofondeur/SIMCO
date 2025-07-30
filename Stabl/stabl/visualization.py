@@ -611,12 +611,11 @@ def scatterplot_regression_predictions(
     """
     if not isinstance(paths, list):
         paths = [paths]
-    ratio = 3.2 / 2.1
-    height = 4.8  # l’ancienne hauteur
-    width = height * ratio  # ≈ 7.31
+    ratio = 2.25/1.5
+    height = 4.8
+    width = height * ratio
     
     fig, ax = plt.subplots(1, 1, figsize=(width, height), **kwargs)
-    #fig, ax = plt.subplots(1, 1, **kwargs)
     sns.scatterplot(ax=ax, x=y_true, y=y_preds, color="#2f2f2f", alpha=.9, edgecolor="#1a1a1a", s=30)
     #p1 = max(max(y_preds), max(y_true))
     #p2 = min(min(y_preds), min(y_true))
