@@ -1,0 +1,73 @@
+{
+    "ordering": [
+        ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"],
+        ["B1", "B2", "B3"], 
+        ["C1", "C2", "C3"],
+        ["D1", "D2", "D3"],
+        ["E1", "E2", "E3"],
+        ["F1", "F2", "F3"]
+    ],
+    "brand": {
+        "brand": "Custom",
+        "brandId": ["001"]
+    },
+    "metadata": {
+        "displayName": "Custom Tube Rack Drugscreen",
+        "displayCategory": "tubeRack",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 127.5,
+        "yDimension": 85.5,
+        "zDimension": 124.5
+    },
+    "wells": {
+        "A1": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 74, "z": 51.5},
+        "A2": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 65, "z": 51.5},
+        "A3": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 56, "z": 51.5},
+        "A4": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 47, "z": 51.5},
+        "A5": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 38, "z": 51.5},
+        "A6": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 29, "z": 51.5},
+        "A7": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 20, "z": 51.5},
+        "A8": {"depth": 44.5, "totalLiquidVolume": 1200, "shape": "circular", "diameter": 7, "x": 12, "y": 11, "z": 51.5},
+        "B1": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 32, "y": 71, "z": 42},
+        "B2": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 32, "y": 46, "z": 42},
+        "B3": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 32, "y": 21, "z": 42},
+        "C1": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 53, "y": 71, "z": 42},
+        "C2": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 53, "y": 46, "z": 42},
+        "C3": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 53, "y": 21, "z": 42},
+        "D1": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 74, "y": 71, "z": 42},
+        "D2": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 74, "y": 46, "z": 42},
+        "D3": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 74, "y": 21, "z": 42},
+        "E1": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 95, "y": 71, "z": 42},
+        "E2": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 95, "y": 46, "z": 42},
+        "E3": {"depth": 38, "totalLiquidVolume": 1500, "shape": "circular", "diameter": 8.8, "x": 95, "y": 21, "z": 42},
+        "F1": {"depth": 117.5, "totalLiquidVolume": 15000, "shape": "circular", "diameter": 14, "x": 113, "y": 68, "z": 7},
+        "F2": {"depth": 117.5, "totalLiquidVolume": 15000, "shape": "circular", "diameter": 14, "x": 113, "y": 43, "z": 7},
+        "F3": {"depth": 117.5, "totalLiquidVolume": 15000, "shape": "circular", "diameter": 14, "x": 113, "y": 18, "z": 7}
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "u"
+            },
+            "wells": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "B1", "B2", "B3", "C1", "C2", "C3", "D1", "D2", "D3", "E1", "E2", "E3", "F1", "F2", "F3"]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "custom_tuberack"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}
