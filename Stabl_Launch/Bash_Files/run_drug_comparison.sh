@@ -8,7 +8,7 @@
 #SBATCH --mem=32GB
 
 module load python/3.9.0
-source ../../Stabl_venv/bin/activate
+source ../../Common_venv/bin/activate
 
 python ../run_cv_drug_vs_dmso.py \
     --notreat_features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
