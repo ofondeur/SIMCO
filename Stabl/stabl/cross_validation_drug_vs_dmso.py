@@ -14,6 +14,7 @@ from sklearn import clone
 from pathlib import Path
 import os
 import numpy as np
+import matplotlib as mpl
 import shap
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -30,6 +31,7 @@ ConvergenceWarning('ignore')
 import collections
 outter_cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=20, random_state=42)
 from collections import defaultdict
+import json
 inner_reg_cv = RepeatedKFold(n_splits=5, n_repeats=5, random_state=42)
 inner_cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=42)
 inner_group_cv = GroupShuffleSplit(n_splits=25, test_size=0.2, random_state=42)
@@ -339,9 +341,10 @@ def cv_drug_vs_dmso(
                 for features in df["Fold selected features"]
             ]
     k = 1
-    path2="../Data/Preprocessed_OOL_Clinical.csv"
-    true_data=pd.read_csv(path2)
-    true_data.set_index("ID", inplace=True)
+    if use_ega:
+        path2="../Data/Preprocessed_OOL_Clinical.csv"
+        true_data=pd.read_csv(path2)
+        true_data.set_index("ID", inplace=True)
     xgb_importances_per_fold = []
     shap_importances_per_fold = []
     shap_values_all_folds=[]
@@ -499,7 +502,7 @@ def cv_drug_vs_dmso(
                 stabl_dir = Path(cv_res_path, f"Stabl features {model}")
                 stabl_dir.mkdir(parents=True, exist_ok=True)
                 val.to_csv(stabl_dir / f"Stabl features {model} {omic_name}.csv")
-    
+    predictions_dict_score = {model: predictions_dict[model]['No_treat'].median(axis=1) for model in predictions_dict.keys()}
     predictions_dict = {
         model: {
             drug: df.median(axis=1)
@@ -508,6 +511,14 @@ def cv_drug_vs_dmso(
         for model in predictions_dict
     }
     
+    table_of_scores = compute_scores_table(
+        predictions_dict=predictions_dict_score,
+        y=y,
+        task_type=task_type,
+        selected_features_dict=formatted_features_dict
+    )
+
+    table_of_scores.to_csv(Path(summary_res_path, "Scores training CV.csv"))
     all_prediction_dicts = {}
     for drug in data_dict:
         prediction_dict_drug = {
@@ -522,22 +533,11 @@ def cv_drug_vs_dmso(
     xgb_avg_importance.to_csv(summary_res_path / "xgb_mean_importance.csv")
     shap_avg_importance.to_csv(summary_res_path / "shap_mean_importance.csv")
     
-    # === Barplot XGBoost vs SHAP ===
-    top_k = 20
-    common_features = list(set(xgb_avg_importance.head(top_k).index) | set(shap_avg_importance.head(top_k).index))
-    df_imp = pd.DataFrame({
-        "XGBoost": xgb_avg_importance[common_features],
-        "SHAP": shap_avg_importance[common_features]
-    }).fillna(0).sort_values(by="SHAP", ascending=False)
-    df_imp.plot(kind="barh", figsize=(10, 8))
-    plt.title("Top Feature Importances - SHAP vs XGBoost (mean over folds)")
-    plt.tight_layout()
-    plt.savefig(summary_res_path / "combined_importance_barplot.pdf")
-    plt.close()
-    
     # === SHAP summary plot global ===
     top_k = 10
     top_features = shap_avg_importance.head(top_k).index.tolist()[::-1]
+    with open(summary_res_path / "top_features.json", "w") as f:
+        json.dump(top_features, f)
     shap_values_all = pd.concat(shap_values_all_folds)[top_features]
     if use_ega:
         clinical_vars = ["EGA"]
@@ -549,6 +549,7 @@ def cv_drug_vs_dmso(
                 globals()[data_name_test] = pd.concat(
                     [globals()[data_name_test], clinical], axis=1
                 )
+    shap_values_all.to_csv(summary_res_path / "shap_values_all.csv")
     X_all = X_tot.loc[shap_values_all.index, top_features]
     
     shap.summary_plot(
@@ -561,15 +562,15 @@ def cv_drug_vs_dmso(
     plt.tight_layout()
     plt.savefig(summary_res_path / "shap_summary_plot_global.pdf")
     plt.close()
-    top_features = shap_avg_importance.head(top_k).index.tolist()
-    X_test_No_treat = X_tot.loc[shap_values_all.index, top_features]
+    all_features = X_tot.columns.tolist()
+    X_test_No_treat = X_tot.loc[:, all_features]
     X_test_per_drug = {}
 
     for drug in data_dict:
         if drug == 'No_treat':
             continue
         data_name = f"X_tot_{drug}"
-        X_test_per_drug[drug] = globals()[data_name].loc[shap_values_all.index, top_features]
+        X_test_per_drug[drug] = globals()[data_name].loc[:, all_features]
 
     std_pipe = Pipeline([
         ('imputer', SimpleImputer(strategy="median")),
@@ -578,26 +579,64 @@ def cv_drug_vs_dmso(
     X_test_No_treat = pd.DataFrame(
         std_pipe.fit_transform(X_test_No_treat),
         index=X_test_No_treat.index,
-        columns=top_features
+        columns=all_features
     )
     
     for drug in X_test_per_drug:
         X_test_per_drug[drug] = pd.DataFrame(
             std_pipe.transform(X_test_per_drug[drug]),
             index=X_test_per_drug[drug].index,
-            columns=top_features
+            columns=all_features
         )
     
-    feature_deltas = pd.DataFrame(index=top_features)
-    
+
+    feature_deltas = pd.DataFrame(index=all_features)
+
     for drug in X_test_per_drug:
         X_drug = X_test_per_drug[drug]
         X_notreat = X_test_No_treat
         common_idx = X_drug.index.intersection(X_notreat.index)
         delta = (X_drug.loc[common_idx] - X_notreat.loc[common_idx]).mean(axis=0)
         feature_deltas[drug] = delta
+    feature_deltas = feature_deltas.loc[all_features]
+    feature_deltas.to_csv(summary_res_path / "feature_deltas.csv")
 
-    feature_deltas = feature_deltas.loc[top_features]
+    feats_to_use= shap_avg_importance.head(top_k).index.tolist()
+    X_test_No_treat = X_tot.loc[:, feats_to_use]
+    X_test_per_drug = {}
+
+    for drug in data_dict:
+        if drug == 'No_treat':
+            continue
+        data_name = f"X_tot_{drug}"
+        X_test_per_drug[drug] = globals()[data_name].loc[:, feats_to_use]
+
+    std_pipe = Pipeline([
+        ('imputer', SimpleImputer(strategy="median")),
+        ('std', StandardScaler())
+    ])
+    X_test_No_treat = pd.DataFrame(
+        std_pipe.fit_transform(X_test_No_treat),
+        index=X_test_No_treat.index,
+        columns=feats_to_use
+    )
+    
+    for drug in X_test_per_drug:
+        X_test_per_drug[drug] = pd.DataFrame(
+            std_pipe.transform(X_test_per_drug[drug]),
+            index=X_test_per_drug[drug].index,
+            columns=feats_to_use
+        )
+
+    feature_deltas = pd.DataFrame(index=feats_to_use)
+
+    for drug in X_test_per_drug:
+        X_drug = X_test_per_drug[drug]
+        X_notreat = X_test_No_treat
+        common_idx = X_drug.index.intersection(X_notreat.index)
+        delta = (X_drug.loc[common_idx] - X_notreat.loc[common_idx]).mean(axis=0)
+        feature_deltas[drug] = delta
+    
     plt.figure(figsize=(10, 6))
     sns.heatmap(feature_deltas, annot=True, cmap="RdBu_r", center=0, linewidths=0.5, fmt=".2f")
     plt.title("Average Δ feature values (Drug - No_treat)\nTop SHAP features only")
@@ -606,5 +645,4 @@ def cv_drug_vs_dmso(
     plt.tight_layout()
     plt.savefig(summary_res_path / "heatmap_top_features_deltas.pdf")
     plt.close()
-    
     return all_prediction_dicts

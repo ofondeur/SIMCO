@@ -11,8 +11,8 @@ module load python/3.9.0
 source ../../Stabl_venv/bin/activate
 
 python ../grid_search_model.py \
-    --features_path ../Data/merge_long_OOL_prediction.csv \
-    --fold_feats_path ../Results/results_XGB_KO_merge_long_OOL_prediction \
-    --results_dir ../Results/onset_test/gridsearch_RMSE_XGB_merged_EN \
+    --features_path ../Data/ina_13OG_final_long_allstims_filtered.csv \
+    --fold_feats_path ../Results/results_ina_13OG_final_long_allstims_filtered_xgboost_knockoff_GSS \
+    --results_dir ../Results/gridsearch_RMSE_param_long \
     --artificial_type knockoff \
     --model_chosen xgboost

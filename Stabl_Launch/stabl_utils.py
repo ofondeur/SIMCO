@@ -88,8 +88,8 @@ def process_data(features_path, outcome_path):
     df_features = pd.read_csv(features_path, index_col=0)
     df_outcome = pd.read_csv(outcome_path, index_col=0, dtype={'DOS': int})
     df_outcome = df_outcome[df_outcome.index.isin(df_features.index)]
-
+    df_features = df_features[df_features.index.isin(df_outcome.index)]
     y = df_outcome["DOS"]
-    df_features = df_features[df_features.index.isin(y.index)]
+
     return df_features, y
 

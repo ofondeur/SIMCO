@@ -97,6 +97,7 @@ def main():
     if args.model_chosen == "xgboost" and args.xgb_config_path is not None:
         with open(args.xgb_config_path, 'r') as f:
             xgb_params = json.load(f)
+        print(f"Using XGBoost parameters {xgb_params}")
         xgboost_model = XGBRegressor(**xgb_params, verbosity=0)
         estimators["xgboost"] = xgboost_model
         

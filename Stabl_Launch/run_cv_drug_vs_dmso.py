@@ -13,7 +13,7 @@ import argparse
 import json
 from xgboost import XGBRegressor
 from sklearn.model_selection import GroupShuffleSplit
-from stabl.cross_validation_drug_vs_dmso import cv_drug_vs_dmso
+from stabl.cross_validation_drug_vs_dmso import cv_drug_vs_dmso,cv_drug_vs_dmso2
 from stabl_utils import get_estimators,split_features_by_stim,get_stims,process_data
 
 def main():
@@ -24,11 +24,11 @@ def main():
         help="Path to the not treated features CSV file (wide format)."
     )
     parser.add_argument(
-        "--use_ega",
-        type=bool,
-        default=False,
-        help="Whether to use EGA features (True/False)."
-    )
+    "--use_ega",
+    action="store_true",
+    help="Use EGA features if this flag is provided (default: False)."
+)
+
     parser.add_argument(
         "--fold_feats_path",
         required=True,
@@ -70,6 +70,8 @@ def main():
     print(f"Using STABL artificial type: {artificial_type_arg}")
     print(f"Model chosen: {model_chosen}")
     print(f"Using fold features from: {fold_feats_path}")
+    print(f"Using ega: {use_ega}")
+
     
     os.makedirs(results_path, exist_ok=True)
 
@@ -88,13 +90,12 @@ def main():
         if drug not in ['SA', 'RIF', 'SALPZ', 'CHT', 'THF', 'LPZ', 'MAP', 'PRA', 'MF']:
             print(f"[WARNING] Skipping drug {drug}, name is not usual")
             continue
-        path_features_drug=f"../Data/Drug_data/ina_13OG_{drug}_untreated_unstim_long.csv"
+        path_features_drug=f"../Data/Drug_data/ina_13OG_{drug}_pred_unstim.csv"
         if not os.path.exists(path_features_drug):
             print(f"[WARNING] Skipping drug {drug}, path {path_features_drug} not found")
             continue
         df_features_treat = pd.read_csv(path_features_drug, index_col=0)
         df_features_treat = df_features_treat[df_features_treat.index.isin(y.index)]
-        print(df_features_treat.shape)
         treat_dict=split_features_by_stim(df_features_treat, stims)
         if not treat_dict:
             raise ValueError("No stim-specific features found. Please check your feature names.")
