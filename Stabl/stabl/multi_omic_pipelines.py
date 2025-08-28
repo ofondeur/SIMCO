@@ -103,10 +103,18 @@ def multi_omic_stabl_cv(
         - "alasso" : ALasso in GridSearchCV
         - "en" : ElasticNet in GridSearchCV
         - "sgl" : SGL in GridSearchCV
+        - "rf" : RandomForest in GridSearchCV (optional)
+        - "xgb" : XGBoost in GridSearchCV (optional)
+        - "cb" : CatBoost in GridSearchCV (optional)
+        - "lgb" : LightGBM in GridSearchCV (optional)
         - "stabl_lasso" : Stabl with Lasso as base estimator
         - "stabl_alasso" : Stabl with ALasso as base estimator
         - "stabl_en" : Stabl with ElasticNet as base estimator
         - "stabl_sgl" : Stabl with SGL as base estimator
+        - "stabl_rf" : Stabl with RandomForest as base estimator (optional)
+        - "stabl_xgb" : Stabl with XGBoost as base estimator (optional)
+        - "stabl_cb" : Stabl with CatBoost as base estimator (optional)
+        - "stabl_lgb" : Stabl with LightGBM as base estimator (optional)
 
     task_type: str
         Can either be "binary" for binary classification or "regression" for regression tasks.
@@ -122,12 +130,20 @@ def multi_omic_stabl_cv(
         - "STABL ALasso" : Stabl with ALasso as base estimator
         - "ElasticNet" : ElasticNet
         - "STABL ElasticNet" : Stabl with ElasticNet as base estimator
+        - "RandomForest" : Random Forest (optional)
+        - "STABL RandomForest" : Stabl with RandomForest (optional)
+        - "XGBoost" : XGBoost (optional)
+        - "STABL XGBoost" : Stabl with XGBoost (optional)
+        - "CatBoost" : CatBoost (optional)
+        - "STABL CatBoost" : Stabl with CatBoost (optional)
+        - "LightGBM" : LightGBM (optional)
+        - "STABL LightGBM" : Stabl with LightGBM (optional)
 
     outer_groups: pd.Series, default=None
         If used, should be the same size as y and should indicate the groups of the samples.
 
     early_fusion: bool, default=False
-        If True, it will perform early fusion for each estimator.
+        If True, it will perform early fusion for each estimator. (Applied to linear models only.)
 
     late_fusion: bool, default=true
         If True, it will perform late fusion for each estimator.
@@ -140,16 +156,39 @@ def multi_omic_stabl_cv(
     predictions_dict: dict
         Dictionary containing the predictions of each model for each sample in Cross-Validation.
     """
+    # Limiter l’EF aux modèles linéaires (coef_ requis)
     if early_fusion:
-        models += ["EF " + model for model in models if "STABL" not in model]
+        models += ["EF " + model for model in models
+                   if "STABL" not in model and model in {"Lasso", "ALasso", "ElasticNet"}]
+
+    # Mapping de base (existant)
     model_obj_map = {
-    "Lasso": estimators["lasso"],
-    "ALasso": estimators["alasso"],
-    "ElasticNet": estimators["en"],
-    "STABL Lasso": estimators["stabl_lasso"],
-    "STABL ALasso": estimators["stabl_alasso"],
-    "STABL ElasticNet": estimators["stabl_en"],
-}
+        "Lasso": estimators["lasso"],
+        "ALasso": estimators["alasso"],
+        "ElasticNet": estimators["en"],
+        "STABL Lasso": estimators["stabl_lasso"],
+        "STABL ALasso": estimators["stabl_alasso"],
+        "STABL ElasticNet": estimators["stabl_en"],
+    }
+    # Ajouts optionnels arbres/boosting + STABL
+    if "rf" in estimators:
+        model_obj_map["RandomForest"] = estimators["rf"]
+    if "xgb" in estimators:
+        model_obj_map["XGBoost"] = estimators["xgb"]
+    if "cb" in estimators:
+        model_obj_map["CatBoost"] = estimators["cb"]
+    if "lgb" in estimators:
+        model_obj_map["LightGBM"] = estimators["lgb"]
+
+    if "stabl_rf" in estimators:
+        model_obj_map["STABL RandomForest"] = estimators["stabl_rf"]
+    if "stabl_xgb" in estimators:
+        model_obj_map["STABL XGBoost"] = estimators["stabl_xgb"]
+    if "stabl_cb" in estimators:
+        model_obj_map["STABL CatBoost"] = estimators["stabl_cb"]
+    if "stabl_lgb" in estimators:
+        model_obj_map["STABL LightGBM"] = estimators["stabl_lgb"]
+
     os.makedirs(Path(save_path, "Training CV"), exist_ok=True)
     os.makedirs(Path(save_path, "Summary"), exist_ok=True)
 
@@ -213,6 +252,7 @@ def multi_omic_stabl_cv(
             )
             assert X_tmp_std.shape[0] == y_tmp.shape[0], f"Mismatch after cleaning and transform: X={X_tmp_std.shape}, y={y_tmp.shape}"
             print(X_tmp_std.shape)
+
             # __STABL__
             for model_upper in filter(lambda x: "STABL" in x, models):
                 print(f"Fitting of {model_upper}")
@@ -238,6 +278,7 @@ def multi_omic_stabl_cv(
                         task_type=task_type
                     )
             
+            # __Modèles de base (non-STABL / non-EF)__
             for model_upper in filter(lambda x: "STABL" not in x and "EF" not in x, models):
                 print(f"Fitting of {model_upper}")
                 model_obj = model_obj_map.get(model_upper)
@@ -251,7 +292,24 @@ def multi_omic_stabl_cv(
                 else:
                     predictions = model.fit(X_tmp_std, y_tmp, groups=groups).predict(X_test_tmp_std)
 
-                tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
+                # Sélection des features selon la famille du modèle
+                if model_upper in {"Lasso", "ALasso", "ElasticNet"}:
+                    tmp_sel_features = list(X_tmp_std.columns[np.where(model.best_estimator_.coef_.flatten())])
+                elif model_upper in {"RandomForest", "XGBoost", "LightGBM"}:
+                    importances = getattr(model.best_estimator_, "feature_importances_", None)
+                    if importances is None:
+                        importances = np.zeros(X_tmp_std.shape[1])
+                    tmp_sel_features = list(X_tmp_std.columns[np.where(np.asarray(importances).flatten() > 0)])
+                elif model_upper == "CatBoost":
+                    be = getattr(model, "best_estimator_", None)
+                    try:
+                        importances = be.get_feature_importance()
+                        tmp_sel_features = list(X_tmp_std.columns[np.where(np.asarray(importances) > 0)])
+                    except Exception:
+                        tmp_sel_features = []
+                else:
+                    tmp_sel_features = []
+
                 fold_selected_features[model_upper].extend(tmp_sel_features)
 
                 print(
@@ -261,6 +319,7 @@ def multi_omic_stabl_cv(
 
                 predictions_dict_late_fusion[model_upper][omic_name].loc[test_idx_tmp, f"Fold n°{k}"] = predictions
             
+        # __Post-omics : entraînement final sur features STABL concaténées__
         for model in filter(lambda x: "STABL" in x, models):
             X_train = X_tot.loc[train_idx, fold_selected_features[model]]
             X_test = X_tot.loc[test_idx, fold_selected_features[model]]
@@ -354,6 +413,7 @@ def multi_omic_stabl_cv(
                 else:
                     predictions = model.fit(X_train_std, y_train, groups=groups).predict(X_test_std)
 
+                # EF = linéaire uniquement → coef_
                 tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
                 fold_selected_features[model_upper] = tmp_sel_features
 
