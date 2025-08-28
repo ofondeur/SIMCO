@@ -502,9 +502,11 @@ def multi_omic_stabl(
         early_fusion=False,
         X_test=None,
         y_test=None,
-        n_iter_lf=10000
+        n_iter_lf=10000,
+        importance_method: str | None = None,   # <— NOUVEAU (optionnel)
 ):
     """
+
     Performs a cross validation on the data_dict using the models and saves the results in save_path.
 
     Parameters
@@ -545,6 +547,14 @@ def multi_omic_stabl(
         - "STABL SGL-90" : Stabl with SGL with 0.90 as correlation threshold as base estimator
         - "SGL-95" : SGL with 0.95 as correlation threshold
         - "STABL SGL-95" : Stabl with SGL with 0.95 as correlation threshold as base estimator
+        - "RandomForest" : Random Forest (optional)
+        - "STABL RandomForest" : Stabl with RandomForest (optional)
+        - "XGBoost" : XGBoost (optional)
+        - "STABL XGBoost" : Stabl with XGBoost (optional)
+        - "CatBoost" : CatBoost (optional)
+        - "STABL CatBoost" : Stabl with CatBoost (optional)
+        - "LightGBM" : LightGBM (optional)
+        - "STABL LightGBM" : Stabl with LightGBM (optional)
 
     stabl_params: dict, default=None
         Dictionary containing the parameters to use for STABL. It overrides default settings. It is used to change Stabl parameters between omics. 
@@ -574,8 +584,12 @@ def multi_omic_stabl(
     -------
     predictions_dict: dict
         Dictionary containing the predictions of each model for each sample of X_test.
-    """
 
+
+    importance_method: str or None, default=None
+        Méthode d'importance des features pour les variantes STABL à base d'arbres/boosting
+        si non spécifiée par stabl_params ou dans l'estimateur (priorité: stabl_params > importance_method > défaut).
+    """
     if stabl_params is None:
         stabl_params = {}
 
@@ -590,38 +604,43 @@ def multi_omic_stabl(
     stabl_alasso = estimators["stabl_alasso"]
     stabl_en = estimators["stabl_en"]
 
+    if importance_method is not None:
+        for _name in ("stabl_rf", "stabl_xgb", "stabl_cb", "stabl_lgb"):
+            if _name in estimators:
+                try:
+                    estimators[_name].set_params(importance_method=importance_method)
+                except ValueError:
+                    pass
+
     os.makedirs(Path(save_path, "Training-Validation"), exist_ok=True)
     os.makedirs(Path(save_path, "Summary"), exist_ok=True)
 
-    # Initializing the df containing the data of all omics
     X_tot = pd.concat(data_dict.values(), axis="columns")
     if X_test is not None:
         X_test_tot = pd.concat(X_test.values(), axis="columns")
         X_test_tot = X_test_tot.loc[y_test.index]
 
-    predictions_dict = dict()
-    selected_features_dict = dict()
+    predictions_dict = {}
+    selected_features_dict = {m: [] for m in models}
 
-    for model in models:
-        selected_features_dict[model] = []
-
-    predictions_dict_train_late_fusion = dict()
+    predictions_dict_train_late_fusion = {}
     for model in models:
         if "STABL" not in model and "EF" not in model:
-            predictions_dict_train_late_fusion[model] = pd.DataFrame(data=None, columns=data_dict.keys(), index=y.index)
-    predictions_dict_test_late_fusion = dict()
+            predictions_dict_train_late_fusion[model] = pd.DataFrame(
+                data=None, columns=data_dict.keys(), index=y.index
+            )
+    predictions_dict_test_late_fusion = {}
     if X_test is not None and y_test is not None:
         for model in models:
             if "STABL" not in model and "EF" not in model:
-                predictions_dict_test_late_fusion[model] = pd.DataFrame(data=None, columns=X_test.keys(), index=y_test.index)
+                predictions_dict_test_late_fusion[model] = pd.DataFrame(
+                    data=None, columns=X_test.keys(), index=y_test.index
+                )
 
     for omic_name, X_omic in data_dict.items():
         all_columns = X_omic.columns
         if X_test is not None:
             all_columns = all_columns.intersection(X_test[omic_name].columns)
-
-        # if prepro is not None:
-        #     preprocessing = prepro
 
         X_omic_std = pd.DataFrame(
             data=preprocessing.fit_transform(X_omic[all_columns]),
@@ -636,236 +655,160 @@ def multi_omic_stabl(
                 columns=preprocessing.get_feature_names_out()
             )
 
-        # __STABL__
+        def _apply_stabl_overrides(estimator, model_name: str):
+            overrides = stabl_params.get(model_name, {}).get(omic_name, {})
+            if importance_method is not None and "importance_method" not in overrides:
+                # On n'ajoute l'importance_method que si l'estimateur la supporte
+                overrides = {**overrides, "importance_method": importance_method}
+            if overrides:
+                try:
+                    estimator.set_params(**overrides)
+                except ValueError:
+                    pass
+
         if "STABL Lasso" in models:
-            # fit STABL Lasso
             print(f"Fitting of STABL Lasso on {omic_name}")
-            if "STABL Lasso" in stabl_params and omic_name in stabl_params["STABL Lasso"]:
-                stabl.set_params(lambda_grid=stabl_params["STABL Lasso"][omic_name])
+            _apply_stabl_overrides(stabl, "STABL Lasso")
             stabl.fit(X_omic_std, y_omic, groups=groups)
             tmp_sel_features = list(stabl.get_feature_names_out())
             selected_features_dict["STABL Lasso"].extend(tmp_sel_features)
-            print(
-                f"STABL Lasso finished on {omic_name} ({X_omic_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
             save_stabl_results(
                 stabl=stabl,
                 path=Path(save_path, "Training-Validation", f"STABL Lasso results on {omic_name}"),
-                df_X=X_omic,
-                y=y_omic,
-                task_type=task_type
+                df_X=X_omic, y=y_omic, task_type=task_type
             )
 
         if "STABL ALasso" in models:
-            # fit STABL ALasso
             print(f"Fitting of STABL ALasso on {omic_name}")
-            if "STABL ALasso" in stabl_params and omic_name in stabl_params["STABL ALasso"]:
-                stabl_alasso.set_params(lambda_grid=stabl_params["STABL ALasso"][omic_name])
+            _apply_stabl_overrides(stabl_alasso, "STABL ALasso")
             stabl_alasso.fit(X_omic_std, y_omic, groups=groups)
             tmp_sel_features = list(stabl_alasso.get_feature_names_out())
             selected_features_dict["STABL ALasso"].extend(tmp_sel_features)
-            print(
-                f"STABL ALasso finished on {omic_name} ({X_omic_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
             save_stabl_results(
                 stabl=stabl_alasso,
                 path=Path(save_path, "Training-Validation", f"STABL ALasso results on {omic_name}"),
-                df_X=X_omic,
-                y=y_omic,
-                task_type=task_type
+                df_X=X_omic, y=y_omic, task_type=task_type
             )
 
         if "STABL ElasticNet" in models:
-            # fit STABL ElasticNet
             print(f"Fitting of STABL ElasticNet on {omic_name}")
-            if "STABL ElasticNet" in stabl_params and omic_name in stabl_params["STABL ElasticNet"]:
-                stabl_en.set_params(lambda_grid=stabl_params["STABL ElasticNet"][omic_name])
+            _apply_stabl_overrides(stabl_en, "STABL ElasticNet")
             stabl_en.fit(X_omic_std, y_omic, groups=groups)
             tmp_sel_features = list(stabl_en.get_feature_names_out())
             selected_features_dict["STABL ElasticNet"].extend(tmp_sel_features)
-            print(
-                f"STABL ElasticNet finished on {omic_name} ({X_omic_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
             save_stabl_results(
                 stabl=stabl_en,
                 path=Path(save_path, "Training-Validation", f"STABL ElasticNet results on {omic_name}"),
-                df_X=X_omic,
-                y=y_omic,
-                task_type=task_type
+                df_X=X_omic, y=y_omic, task_type=task_type
             )
 
         if "Lasso" in models:
-            # __Lasso__
             print(f"Fitting of Lasso on {omic_name}")
             model = clone(lasso)
             try:
                 model = model.fit(X_omic_std, y_omic, groups=groups)
-            except:
+            except Exception:
                 model = model.fit(X_omic_std, y_omic)
-
             model = model.best_estimator_
-
-            if task_type == "binary":
-                predictions = model.predict_proba(X_omic_std)[:, 1]
-            else:
-                predictions = model.predict(X_omic_std)
-
+            predictions = model.predict_proba(X_omic_std)[:, 1] if task_type == "binary" else model.predict(X_omic_std)
             tmp_sel_features = list(X_omic_std.columns[np.where(model.coef_.flatten())])
             selected_features_dict["Lasso"].extend(tmp_sel_features)
-            print(
-                f"Lasso finished on {omic_name} ({X_omic_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
-
-            base_linear_model_coef = pd.DataFrame(
+            pd.DataFrame(
                 {"Feature": tmp_sel_features,
-                 "Associated weight": model.coef_.flatten()[np.where(model.coef_.flatten())]
-                 }
-            ).set_index("Feature")
-            base_linear_model_coef.to_csv(Path(save_path, "Training-Validation", f"Lasso coefficients {omic_name}.csv"))
-
+                 "Associated weight": model.coef_.flatten()[np.where(model.coef_.flatten())]}
+            ).set_index("Feature").to_csv(Path(save_path, "Training-Validation", f"Lasso coefficients {omic_name}.csv"))
             predictions_dict_train_late_fusion["Lasso"].loc[X_omic.index, omic_name] = predictions
             if X_test is not None:
-                if task_type == "binary":
-                    predictions = model.predict_proba(X_test_omic_std)[:, 1]
-                else:
-                    predictions = model.predict(X_test_omic_std)
-                predictions_dict_test_late_fusion["Lasso"].loc[X_test_omic_std.index, omic_name] = predictions
-                predictions_dict_test_late_fusion["Lasso"].fillna(np.median(predictions_dict_train_late_fusion["Lasso"]), inplace=True)
+                preds = model.predict_proba(X_test_omic_std)[:, 1] if task_type == "binary" else model.predict(X_test_omic_std)
+                predictions_dict_test_late_fusion["Lasso"].loc[X_test_omic_std.index, omic_name] = preds
+                predictions_dict_test_late_fusion["Lasso"].fillna(
+                    np.median(predictions_dict_train_late_fusion["Lasso"]), inplace=True
+                )
 
         if "ALasso" in models:
-            # __ALasso__
             print(f"Fitting of ALasso on {omic_name}")
             model = clone(alasso)
             try:
                 model = model.fit(X_omic_std, y_omic, groups=groups)
-            except:
+            except Exception:
                 model = model.fit(X_omic_std, y_omic)
-
             model = model.best_estimator_
-
-            if task_type == "binary":
-                predictions = model.predict_proba(X_omic_std)[:, 1]
-            else:
-                predictions = model.predict(X_omic_std)
-
+            predictions = model.predict_proba(X_omic_std)[:, 1] if task_type == "binary" else model.predict(X_omic_std)
             tmp_sel_features = list(X_omic_std.columns[np.where(model.coef_.flatten())])
             selected_features_dict["ALasso"].extend(tmp_sel_features)
-            print(
-                f"ALasso finished on {omic_name} ({X_omic_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
-
-            base_linear_model_coef = pd.DataFrame(
+            pd.DataFrame(
                 {"Feature": tmp_sel_features,
-                 "Associated weight": model.coef_.flatten()[np.where(model.coef_.flatten())]
-                 }
-            ).set_index("Feature")
-            base_linear_model_coef.to_csv(Path(save_path, "Training-Validation", f"ALasso coefficients {omic_name}.csv"))
-
+                 "Associated weight": model.coef_.flatten()[np.where(model.coef_.flatten())]}
+            ).set_index("Feature").to_csv(Path(save_path, "Training-Validation", f"ALasso coefficients {omic_name}.csv"))
             predictions_dict_train_late_fusion["ALasso"].loc[X_omic.index, omic_name] = predictions
             if X_test is not None:
-                if task_type == "binary":
-                    predictions = model.predict_proba(X_test_omic_std)[:, 1]
-                else:
-                    predictions = model.predict(X_test_omic_std)
-                predictions_dict_test_late_fusion["ALasso"].loc[X_test_omic_std.index, omic_name] = predictions
-                predictions_dict_test_late_fusion["ALasso"].fillna(np.median(predictions_dict_train_late_fusion["ALasso"]), inplace=True)
+                preds = model.predict_proba(X_test_omic_std)[:, 1] if task_type == "binary" else model.predict(X_test_omic_std)
+                predictions_dict_test_late_fusion["ALasso"].loc[X_test_omic_std.index, omic_name] = preds
+                predictions_dict_test_late_fusion["ALasso"].fillna(
+                    np.median(predictions_dict_train_late_fusion["ALasso"]), inplace=True
+                )
 
         if "ElasticNet" in models:
-            # __EN__
             print(f"Fitting of ElasticNet on {omic_name}")
             model = clone(en)
             try:
                 model = model.fit(X_omic_std, y_omic, groups=groups)
-            except:
+            except Exception:
                 model = model.fit(X_omic_std, y_omic)
-
             model = model.best_estimator_
-
-            if task_type == "binary":
-                predictions = model.predict_proba(X_omic_std)[:, 1]
-            else:
-                predictions = model.predict(X_omic_std)
-
+            predictions = model.predict_proba(X_omic_std)[:, 1] if task_type == "binary" else model.predict(X_omic_std)
             tmp_sel_features = list(X_omic_std.columns[np.where(model.coef_.flatten())])
             selected_features_dict["ElasticNet"].extend(tmp_sel_features)
-            print(
-                f"ElasticNet finished on {omic_name} ({X_omic_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
-
-            base_linear_model_coef = pd.DataFrame(
+            pd.DataFrame(
                 {"Feature": tmp_sel_features,
-                 "Associated weight": model.coef_.flatten()[np.where(model.coef_.flatten())]
-                 }
-            ).set_index("Feature")
-            base_linear_model_coef.to_csv(
-                Path(save_path, "Training-Validation", f"ElasticNet coefficients {omic_name}.csv")
-            )
-
+                 "Associated weight": model.coef_.flatten()[np.where(model.coef_.flatten())]}
+            ).set_index("Feature").to_csv(Path(save_path, "Training-Validation",
+                                               f"ElasticNet coefficients {omic_name}.csv"))
             predictions_dict_train_late_fusion["ElasticNet"].loc[X_omic.index, omic_name] = predictions
             if X_test is not None:
-                if task_type == "binary":
-                    predictions = model.predict_proba(X_test_omic_std)[:, 1]
-                else:
-                    predictions = model.predict(X_test_omic_std)
-                predictions_dict_test_late_fusion["ElasticNet"].loc[X_test_omic_std.index, omic_name] = predictions
+                preds = model.predict_proba(X_test_omic_std)[:, 1] if task_type == "binary" else model.predict(X_test_omic_std)
+                predictions_dict_test_late_fusion["ElasticNet"].loc[X_test_omic_std.index, omic_name] = preds
                 predictions_dict_test_late_fusion["ElasticNet"].fillna(
                     np.median(predictions_dict_train_late_fusion["ElasticNet"]), inplace=True
                 )
 
-    final_prepro = Pipeline(
-        steps=[("impute", SimpleImputer(strategy="median")), ("std", StandardScaler())]
-    )
+    final_prepro = Pipeline(steps=[("impute", SimpleImputer(strategy="median")), ("std", StandardScaler())])
 
     for model in filter(lambda x: "STABL" in x, models):
         if len(selected_features_dict[model]) > 0:
             X_train = X_tot[selected_features_dict[model]]
-            X_train_std = pd.DataFrame(
-                data=preprocessing.fit_transform(X_train),
-                index=X_tot.index,
-                columns=preprocessing.get_feature_names_out()
-            )
+            X_train_std = pd.DataFrame(preprocessing.fit_transform(X_train),
+                                       index=X_tot.index,
+                                       columns=preprocessing.get_feature_names_out())
 
             if task_type == "binary":
                 base_linear_model = logit
-
             else:
-                if model_chosen=='linear_reg':
+                if model_chosen == 'linear_reg':
                     base_linear_model = linreg
-                elif chosen_model=='random_forest':
-                    base_linear_model=randomforest
-                elif model_chosen=='xgboost':
-                        predictions = clone(xgboost).fit(X_train, y_train).predict(X_test)
+                elif model_chosen == 'random_forest':
+                    base_linear_model = randomforest
+                elif model_chosen == 'xgboost':
+                    base_linear_model = xgboost
 
             base_linear_model.fit(X_train_std, y)
             if hasattr(base_linear_model, 'coef_'):
-                # LinearRegression or binary classification
                 importance = base_linear_model.coef_.flatten()
                 metric_name = "Associated weight"
             elif hasattr(base_linear_model, 'feature_importances_'):
-                # RandomForestRegressor
                 importance = base_linear_model.feature_importances_
                 metric_name = "Feature importance"
             else:
                 raise ValueError("Model does not expose interpretable feature importances")
-            
-            base_model_coef = pd.DataFrame(
-                {"Feature": selected_features_dict[model],
-                 metric_name: importance}).set_index("Feature")
 
-            base_model_coef.to_csv(Path(save_path, "Training-Validation", f"{model} coefficients.csv"))
+            pd.DataFrame({"Feature": selected_features_dict[model],
+                          metric_name: importance}).set_index("Feature") \
+              .to_csv(Path(save_path, "Training-Validation", f"{model} coefficients.csv"))
 
             if X_test is not None:
-                X_test_std = pd.DataFrame(
-                    data=preprocessing.transform(X_test_tot[selected_features_dict[model]]),
-                    index=X_test_tot.index,
-                    columns=preprocessing.get_feature_names_out()
-                )
+                X_test_std = pd.DataFrame(preprocessing.transform(X_test_tot[selected_features_dict[model]]),
+                                          index=X_test_tot.index,
+                                          columns=preprocessing.get_feature_names_out())
                 if task_type == "binary":
                     model_preds = base_linear_model.predict_proba(X_test_std)[:, 1]
                 else:
@@ -878,13 +821,8 @@ def multi_omic_stabl(
                 elif task_type == "regression":
                     model_preds[:] = np.mean(y)
         if X_test is not None:
-            predictions_dict[model] = pd.Series(
-                model_preds,
-                index=y_test.index,
-                name=f"{model} predictions"
-            )
+            predictions_dict[model] = pd.Series(model_preds, index=y_test.index, name=f"{model} predictions")
 
-    # __late fusion__
     preds_lf = late_fusion_validation(
         predictions_dict_train_late_fusion, predictions_dict_test_late_fusion, y,
         task_type, Path(save_path, "Training-Validation"), n_iter=n_iter_lf
@@ -893,119 +831,62 @@ def multi_omic_stabl(
         for model in preds_lf:
             predictions_dict[model] = preds_lf[model]
 
-    # __EF Lasso__
     if early_fusion:
-        X_train_std = pd.DataFrame(
-            data=preprocessing.fit_transform(X_tot),
-            index=X_tot.index,
-            columns=preprocessing.get_feature_names_out()
-        )
-
+        X_train_std = pd.DataFrame(preprocessing.fit_transform(X_tot),
+                                   index=X_tot.index,
+                                   columns=preprocessing.get_feature_names_out())
         if X_test is not None:
-            X_test_std = pd.DataFrame(
-                data=preprocessing.transform(X_test_tot),
-                index=X_test_tot.index,
-                columns=preprocessing.get_feature_names_out()
-            )
+            X_test_std = pd.DataFrame(preprocessing.transform(X_test_tot),
+                                      index=X_test_tot.index,
+                                      columns=preprocessing.get_feature_names_out())
 
         if "EF Lasso" in models:
-            # __Lasso__
             print("Fitting of EF Lasso")
             model = clone(lasso)
             try:
                 model.fit(X_train_std, y, groups=groups)
-            except:
+            except Exception:
                 model.fit(X_train_std, y)
             tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
             selected_features_dict["EF Lasso"] = tmp_sel_features
-
-            model_coef = pd.DataFrame(
-                {"Feature": selected_features_dict["EF Lasso"],
-                 "Associated weight": model.best_estimator_.coef_.flatten()[np.where(model.best_estimator_.coef_.flatten())]
-                 }
-            ).set_index("Feature")
-            model_coef.to_csv(Path(save_path, "Training-Validation", "EF Lasso coefficients.csv"))
-
-            print(
-                f"EF Lasso finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
+            pd.DataFrame({"Feature": tmp_sel_features,
+                          "Associated weight": model.best_estimator_.coef_.flatten()[np.where(model.best_estimator_.coef_.flatten())]}
+                         ).set_index("Feature").to_csv(Path(save_path, "Training-Validation", "EF Lasso coefficients.csv"))
             if X_test is not None:
-                if task_type == "binary":
-                    predictions = model.predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.predict(X_test_std)
-                predictions_dict["EF Lasso"] = pd.Series(
-                    predictions,
-                    index=y_test.index,
-                    name=f"EF Lasso predictions"
-                )
+                preds = model.predict_proba(X_test_std)[:, 1] if task_type == "binary" else model.predict(X_test_std)
+                predictions_dict["EF Lasso"] = pd.Series(preds, index=y_test.index, name=f"EF Lasso predictions")
 
         if "EF ALasso" in models:
-            # __ALasso__
             print("Fitting of EF ALasso")
             model = clone(alasso)
             try:
                 model.fit(X_train_std, y, groups=groups)
-            except:
+            except Exception:
                 model.fit(X_train_std, y)
             tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
             selected_features_dict["EF ALasso"] = tmp_sel_features
-
-            model_coef = pd.DataFrame(
-                {"Feature": selected_features_dict["EF ALasso"],
-                 "Associated weight": model.best_estimator_.coef_.flatten()[np.where(model.best_estimator_.coef_.flatten())]
-                 }
-            ).set_index("Feature")
-            model_coef.to_csv(Path(save_path, "Training-Validation", "EF ALasso coefficients.csv"))
-
-            print(
-                f"EF ALasso finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
+            pd.DataFrame({"Feature": tmp_sel_features,
+                          "Associated weight": model.best_estimator_.coef_.flatten()[np.where(model.best_estimator_.coef_.flatten())]}
+                         ).set_index("Feature").to_csv(Path(save_path, "Training-Validation", "EF ALasso coefficients.csv"))
             if X_test is not None:
-                if task_type == "binary":
-                    predictions = model.predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.predict(X_test_std)
-                predictions_dict["EF ALasso"] = pd.Series(
-                    predictions,
-                    index=y_test.index,
-                    name=f"EF ALasso predictions"
-                )
+                preds = model.predict_proba(X_test_std)[:, 1] if task_type == "binary" else model.predict(X_test_std)
+                predictions_dict["EF ALasso"] = pd.Series(preds, index=y_test.index, name=f"EF ALasso predictions")
 
         if "EF ElasticNet" in models:
-            # __EN__
             print("Fitting of EF ElasticNet")
             model = clone(en)
             try:
                 model.fit(X_train_std, y, groups=groups)
-            except:
+            except Exception:
                 model.fit(X_train_std, y)
             tmp_sel_features = list(X_train_std.columns[np.where(model.best_estimator_.coef_.flatten())])
             selected_features_dict["EF ElasticNet"] = tmp_sel_features
-
-            model_coef = pd.DataFrame(
-                {"Feature": selected_features_dict["EF ElasticNet"],
-                 "Associated weight": model.best_estimator_.coef_.flatten()[np.where(model.best_estimator_.coef_.flatten())]
-                 }
-            ).set_index("Feature")
-            model_coef.to_csv(Path(save_path, "Training-Validation", "EF ElasticNet coefficients.csv"))
-
-            print(
-                f"EF ElasticNet finished on {omic_name} ({X_train_std.shape[0]} samples);"
-                f" {len(tmp_sel_features)} features selected"
-            )
+            pd.DataFrame({"Feature": tmp_sel_features,
+                          "Associated weight": model.best_estimator_.coef_.flatten()[np.where(model.best_estimator_.coef_.flatten())]}
+                         ).set_index("Feature").to_csv(Path(save_path, "Training-Validation", "EF ElasticNet coefficients.csv"))
             if X_test is not None:
-                if task_type == "binary":
-                    predictions = model.predict_proba(X_test_std)[:, 1]
-                else:
-                    predictions = model.predict(X_test_std)
-                predictions_dict["EF ElasticNet"] = pd.Series(
-                    predictions,
-                    index=y_test.index,
-                    name=f"EF ElasticNet predictions"
-                )
+                preds = model.predict_proba(X_test_std)[:, 1] if task_type == "binary" else model.predict(X_test_std)
+                predictions_dict["EF ElasticNet"] = pd.Series(preds, index=y_test.index, name=f"EF ElasticNet predictions")
 
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     for model in models:
@@ -1013,33 +894,19 @@ def multi_omic_stabl(
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
     if X_test is not None:
-        table_of_scores = compute_scores_table(
-            predictions_dict=predictions_dict,
-            y=y_test,
-            task_type=task_type
-        )
-        p_values = compute_pvalues_table(
-            predictions_dict=predictions_dict,
-            y=y_test,
-            task_type=task_type
-        )
-
+        table_of_scores = compute_scores_table(predictions_dict=predictions_dict, y=y_test, task_type=task_type)
+        p_values = compute_pvalues_table(predictions_dict=predictions_dict, y=y_test, task_type=task_type)
         table_of_scores.to_csv(Path(save_path, "Training-Validation", "Scores on Validation.csv"))
         table_of_scores.to_csv(Path(save_path, "Summary", "Scores on Validation.csv"))
-
         p_values_path = Path(Path(save_path, "Training-Validation"), "p-values")
         os.makedirs(p_values_path, exist_ok=True)
         for m, p in p_values.items():
             p.to_csv(Path(p_values_path, f"{m}.csv"))
-
-        save_plots(
-            predictions_dict=predictions_dict,
-            y=y_test,
-            task_type=task_type,
-            save_path=Path(save_path, "Training-Validation"),
-        )
+        save_plots(predictions_dict=predictions_dict, y=y_test, task_type=task_type,
+                   save_path=Path(save_path, "Training-Validation"))
 
     return predictions_dict
+
 
 
 def late_fusion_cv(
