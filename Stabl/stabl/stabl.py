@@ -486,23 +486,45 @@ def plot_stabl_path(
             order_list = [np.arange(len(stabl.fitted_lambda_grid_["C"]))]
             x_grid_list = [x_grid_tmp]
             x_padding_list = [0]
+        elif nb_different_params == 1:
+            param = different_params[0]
+            x_grid_tmp = stabl.fitted_lambda_grid_[param] / np.max(stabl.fitted_lambda_grid_[param])
+            order_list = [np.arange(len(stabl.fitted_lambda_grid_[param]))]
+            x_grid_list = [x_grid_tmp]
+            x_padding_list = [0]
     elif nb_different_params == 2:
         params = list(ParameterGrid(stabl.fitted_lambda_grid_))
         ordered_params = dict()
-        for i, k in enumerate(params):
-            l1_ratio = k["l1_ratio"]
-            penalty = k["alpha"] if "alpha" in k else k["C"]
-            if l1_ratio in ordered_params:
-                order = ordered_params[l1_ratio][0]
-                x_grid = ordered_params[l1_ratio][1]
-            else:
-                order = []
-                x_grid = []
-            order.append(i)
-            x_grid.append(penalty)
-            ordered_params[l1_ratio] = (order, x_grid)
-        figsize = (figsize[0] * len(ordered_params.keys()), figsize[1])
-        x_padding = 0
+        if "l1_ratio" in different_params and ("alpha" in different_params or "C" in different_params):
+            for i, k in enumerate(params):
+                l1_ratio = k["l1_ratio"]
+                penalty = k["alpha"] if "alpha" in k else k["C"]
+                if l1_ratio in ordered_params:
+                    order = ordered_params[l1_ratio][0]
+                    x_grid = ordered_params[l1_ratio][1]
+                else:
+                    order = []
+                    x_grid = []
+                order.append(i)
+                x_grid.append(penalty)
+                ordered_params[l1_ratio] = (order, x_grid)
+            figsize = (figsize[0] * len(ordered_params.keys()), figsize[1])
+            x_padding = 0
+        else:
+            for i, k in enumerate(params):
+                l1_ratio = k[different_params[0]]
+                penalty = k[different_params[1]]
+                if l1_ratio in ordered_params:
+                    order = ordered_params[l1_ratio][0]
+                    x_grid = ordered_params[l1_ratio][1]
+                else:
+                    order = []
+                    x_grid = []
+                order.append(i)
+                x_grid.append(penalty)
+                ordered_params[l1_ratio] = (order, x_grid)
+            figsize = (figsize[0] * len(ordered_params.keys()), figsize[1])
+            x_padding = 0
         for l1_ratio in sorted(ordered_params.keys()):
             order = np.array(ordered_params[l1_ratio][0])
             penalties = np.array(ordered_params[l1_ratio][1])
@@ -510,6 +532,8 @@ def plot_stabl_path(
                 x_grid = np.min(penalties) / penalties
             elif "C" in different_params:
                 x_grid = penalties / np.max(penalties)
+            else:
+                x_grid = penalties
             x_padding += np.max(x_grid) - np.min(x_grid) + 1e-5
             x_grid_list.append(x_grid)
             order_list.append(order)
@@ -523,7 +547,7 @@ def plot_stabl_path(
     x_list = []
 
     for i, o in enumerate(order_list):
-        x_grid = x_grid_list[i]
+        x_grid = np.float64(x_grid_list[i])
         x_padding = x_padding_list[i]
         x_grid += x_padding
         for j in x_grid:
