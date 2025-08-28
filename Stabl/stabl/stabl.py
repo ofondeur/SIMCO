@@ -3,6 +3,7 @@ from pathlib import Path
 from warnings import warn
 import sys
 
+import shap
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -617,7 +618,8 @@ def plot_stabl_path(
     ax.tick_params(left=True, right=False, labelleft=True,
                    labelbottom=False, bottom=False)
     ax.set_xlabel(r"$\lambda$")
-    ax.set_ylabel(f"Frequency of selection")
+    ylabel = "Frequency of selection" if getattr(stabl, "score_scale_", "binary") == "binary" else "Average feature importance score" 
+    ax.set_ylabel(ylabel)
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8, axis="y")
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -764,56 +766,158 @@ def fit_bootstrapped_sample(
         y,
         lambda_val,
         corr_groups=None,
-        threshold=None
+        threshold=None,
+        linear_mode: str = "binary", 
+        importance_method: str = "gain"  
 ):
     """
-    Fits base_estimator on a bootstrap sample of the original data,
-    and returns a mas of the variables that are selected by the fitted model.
+    Fits `base_estimator` on a bootstrap sample of the original data, and returns
+    a per-feature vector computed from the fitted model.
 
     Parameters
     ----------
-    base_estimator: estimator
-        This is the estimator to be fitted on the data
+    base_estimator : estimator
+        The estimator to be fitted on the data. If it exposes a `coef_` attribute
+        (e.g. sklearn.linear_model, ALasso/ALogitLasso or compatible wrappers), it is
+        considered a "linear" model for the purpose of `linear_mode` below.
 
-    X: {array-like, sparse matrix}, shape = [n_repeats, n_features]
-        The training input samples.
+    X : {array-like, sparse matrix}, shape = [n_samples, n_features]
+        The training input samples (typically the bootstrap subsample already sliced).
 
-    y: array-like, shape = [n_repeats]
+    y : array-like, shape = [n_samples]
         The target values.
 
-    lambda_val: dict of parameters
-        Penalization parameters of base_estimator
+    lambda_val : dict
+        Penalization (hyper-)parameters of `base_estimator` to set before fitting.
 
-    corr_groups: array-like, default=None
-        Groups of features based on the correlation matrix. It is used for sparse group lasso.
+    corr_groups : array-like, default=None
+        Groups of features (e.g., for Sparse Group Lasso). If `base_estimator` has a
+        `groups` parameter, it will be set to `corr_groups` before fitting.
 
-    threshold: string or float, default=None
-        The hard_threshold value to use for feature selection. Features whose
-        importance is greater or equal are kept while the others are
-        discarded. If "median" (resp. "mean"), then the ``hard_threshold`` value is
-        the median (resp. the mean) of the feature importance. A scaling
-        factor (e.g., "1.25*mean") may also be used. If None and if the
-        estimator has a parameter penalty set to l1, either explicitly
-        or implicitly (e.g, Lasso), the hard_threshold used is 1e-5.
-        Otherwise, "mean" is used by default.
+    threshold : str or float, default=None
+        Hard threshold used **only when `linear_mode="binary"` and the estimator is linear**.
+        In that case, features whose importance is greater or equal are kept while the others
+        are discarded. If "median" (resp. "mean"), then the threshold value is the median
+        (resp. the mean) of the feature importance. A scaling factor (e.g., "1.25*mean")
+        may also be used. If None and the estimator has an l1 penalty (explicitly or
+        implicitly), the default hard threshold is 1e-5; otherwise "mean" is used by default.
+        For non-linear models or when `linear_mode="normalize"`, this argument is ignored.
+
+    linear_mode : {"normalize", "binary"}, default="binary"
+        Behavior for linear estimators (those exposing `coef_`):
+          - "binary"      : returns a 0/1 mask via `SelectFromModel(threshold=...)`.
+          - "normalize"   : returns a continuous importance defined as `abs(coef_)`,
+                            averaged across classes if multiclass, then scaled by the
+                            peak-to-peak range (division by `np.ptp` only, without
+                            subtracting the minimum). If all importances are zero or
+                            the range is zero, returns an all-zeros vector.
+        This switch has no effect on non-linear models (trees/XGB), which always return
+        normalized importances as described in `importance_method`.
+
+    importance_method : {"weight","gain","cover","total_gain","total_cover","shap"}, default="gain"
+        Feature-importance method for tree/XGB models:
+          - "shap"        : mean absolute SHAP values over samples (via `shap.TreeExplainer`),
+                            then scaled by peak-to-peak range (division by `np.ptp`).
+                            If SHAP computation fails, falls back to `feature_importances_`.
+          - others        : uses `booster.get_score(importance_type=...)` when available
+                            (XGBoost sklearn wrapper) or `feature_importances_` otherwise,
+                            then scales by peak-to-peak range (division by `np.ptp`).
+        Note: scaling is done without centering, i.e. values are divided by `(max - min)`
+        but the minimum is not subtracted; numeric stability: returns zeros if all-zero or
+        zero-range.
 
     Returns
     -------
-    selected_variables: array-like, shape=(n_features, )
-        Boolean mask of the selected variables.
+    selected_variables : array-like of shape (n_features,)
+        - If `linear_mode="binary"` and the estimator is linear: a float vector in {0.,1.}
+          representing the boolean selection mask produced by `SelectFromModel`.
+        - Otherwise (linear with "normalize", or non-linear models): a float vector of
+          continuous importances scaled by peak-to-peak (division by `np.ptp`), with
+          zeros when importances are all zero or range is zero. Because no centering is
+          applied, values are not guaranteed to lie in [0,1] when `min(importance) > 0`.
+
+    Notes
+    -----
+    - `lambda_val` is applied via `base_estimator.set_params(**lambda_val)` before fitting.
+    - If `base_estimator` exposes a `groups` parameter, it is set to `corr_groups`.
+    - For multiclass linear models, the absolute coefficients are averaged across classes.
+    - For XGBoost sklearn wrappers, raw booster importances are mapped to feature indices
+      `f0, f1, ..., f{n_features-1}` and missing keys default to 0.
+
     """
+
     base_estimator.set_params(**lambda_val)
     if hasattr(base_estimator, "groups"):
         base_estimator.set_params(groups=corr_groups)
     base_estimator.fit(X, y)
 
-    features_selection = SelectFromModel(
-        estimator=base_estimator,
-        threshold=threshold,
-        prefit=True
-    )
+    n_features = getattr(base_estimator, "n_features_in_", X.shape[1])
 
-    return features_selection.get_support()
+    def _is_linearish(est):
+        mod = getattr(est, "__module__", "")
+        name_chain = [c.__name__ for c in type(est).mro()]
+        return (
+            mod.startswith("sklearn.linear_model")
+            or ("ALasso" in name_chain) or ("ALogitLasso" in name_chain)
+            or hasattr(est, "coef_")
+        )
+
+    # Linear models 
+    if _is_linearish(base_estimator):
+        if linear_mode == "binary":
+            features_selection = SelectFromModel(
+                estimator=base_estimator,
+                threshold=threshold,
+                prefit=True
+            )
+            return features_selection.get_support().astype(float)
+
+        coefs = getattr(base_estimator, "coef_", None)
+        if coefs is None:
+            feat_imp = getattr(base_estimator, "feature_importances_", None)
+            if feat_imp is None:
+                return np.zeros(n_features, dtype=float)
+            feat_imp = np.asarray(feat_imp, dtype=float)
+        else:
+            coefs = np.asarray(coefs, dtype=float)
+            if coefs.ndim == 1:
+                feat_imp = np.abs(coefs)
+            else:
+                feat_imp = np.mean(np.abs(coefs), axis=0)
+
+        if np.all(feat_imp == 0):
+            return np.zeros_like(feat_imp, dtype=float)
+        range_imp = np.ptp(feat_imp)
+        return np.zeros_like(feat_imp, dtype=float) if range_imp == 0 else (feat_imp / range_imp)
+    
+    # Tree / XGB models
+    if importance_method == "shap":
+        try:
+            explainer = shap.TreeExplainer(base_estimator)
+            shap_vals = explainer.shap_values(X, check_additivity=False)
+            if isinstance(shap_vals, list):  # multiclass
+                shap_vals = np.stack(shap_vals).sum(axis=0)
+            feat_imp = np.abs(shap_vals).mean(axis=0)
+        except Exception:
+            feat_imp = getattr(base_estimator, "feature_importances_", None)
+            if feat_imp is None:
+                feat_imp = np.zeros(n_features, dtype=float)
+    else:
+        if hasattr(base_estimator, "get_booster"):
+            booster = base_estimator.get_booster()
+            score = booster.get_score(importance_type=importance_method)
+            feat_imp = np.array([score.get(f"f{i}", 0.0) for i in range(n_features)], dtype=float)
+        else:
+            feat_imp = getattr(base_estimator, "feature_importances_", None)
+            if feat_imp is None:
+                feat_imp = np.zeros(n_features, dtype=float)
+
+    feat_imp = np.asarray(feat_imp, dtype=float)
+    if np.all(feat_imp == 0):
+        return np.zeros_like(feat_imp, dtype=float)
+    range_imp = np.ptp(feat_imp)
+    return np.zeros_like(feat_imp, dtype=float) if range_imp == 0 else (feat_imp / range_imp)
+
 
 
 class Stabl(SelectorMixin, BaseEstimator):
@@ -906,6 +1010,25 @@ class Stabl(SelectorMixin, BaseEstimator):
 
     random_state: int or None, default=None
         Random state for reproducibility matters.
+    
+    importance_method : {"weight","gain","cover","total_gain","total_cover","shap"}, default="gain"
+        Feature-importance method used for **tree/XGB** models inside each bootstrap:
+        - "shap": mean absolute SHAP across samples (via `shap.TreeExplainer`), then scaled by the
+          peak-to-peak range (division by `np.ptp` only). Falls back to `feature_importances_` on error.
+        - Others: uses `booster.get_score(importance_type=...)` for XGBoost sklearn wrappers or
+          `feature_importances_` otherwise, then scales by peak-to-peak (division by `np.ptp` only).
+        Note: scaling is done **without centering**; if all-zero or zero-range, returns all zeros.
+
+    linear_mode : {"normalize","binary"}, default="binary"
+        Behavior for **linear** estimators (i.e., exposing `coef_`, including ALasso/ALogitLasso and
+        sklearn linear models):
+        - "binary": returns {0,1} via `SelectFromModel(threshold=bootstrap_threshold)` at each bootstrap
+          (historical stability-selection frequency semantics).
+        - "normalize": returns continuous importances defined as `abs(coef_)` (averaged over classes
+          if multiclass), then **scaled by the peak-to-peak range** (division by `np.ptp` only,
+          without subtracting the minimum). All-zero or zero-range → zeros.
+        Non-linear models ignore `linear_mode` and always use the `importance_method` logic above.
+
 
     Attributes
     ----------
@@ -939,6 +1062,12 @@ class Stabl(SelectorMixin, BaseEstimator):
     fdr_min_threshold_: float
         The hard_threshold achieving the desired FDR. Can only be retrieved if we used decoy or knockoff
         in the training and if no hard hard_threshold where defined.
+    
+    score_scale_ : {"binary","continuous"}
+        Indicator of the score scale used for plotting/interpretation:
+        - "binary" when linear models use `linear_mode="binary"` (selection frequencies).
+        - "continuous" otherwise (normalized continuous importances).
+        Does not affect computation; purely informational.
     """
 
     def __init__(
@@ -968,7 +1097,9 @@ class Stabl(SelectorMixin, BaseEstimator):
             sgl_groups=None,
             verbose=0,
             n_jobs=-1,
-            random_state=None
+            random_state=None,
+            importance_method: str = "gain",
+            linear_mode: str = "binary"
     ):
         if fdr_threshold_range is None:
             fdr_threshold_range = np.arange(0., 1., .01)
@@ -1002,6 +1133,9 @@ class Stabl(SelectorMixin, BaseEstimator):
         self.fdr_min_threshold_ = None
         self.explore_threshold = None
         self.fitted_lambda_grid_ = None
+        self.importance_method = importance_method
+        self.linear_mode = linear_mode
+        self.score_scale_ = None
 
     def _check_lambda_grid(self):
         """Check if the lambda_grid is valid. Raise error if not.
@@ -1220,16 +1354,21 @@ class Stabl(SelectorMixin, BaseEstimator):
                 y=y[subsample_indices],
                 corr_groups=corr_groups,
                 lambda_val=lambda_val,
-                threshold=self.bootstrap_threshold
+                threshold=self.bootstrap_threshold,
+                importance_method=self.importance_method,
+                linear_mode=self.linear_mode
             )
                 for subsample_indices in bootstrap_indices
             )
-
+            
             if self.artificial_type is not None:
                 self.stabl_scores_artificial_[:, idx] = np.vstack(
                     selected_variables)[:, n_features:].mean(axis=0)
             self.stabl_scores_[:, idx] = np.vstack(selected_variables)[
                 :, :n_features].mean(axis=0)
+            
+            if self.score_scale_ is None:
+                self.score_scale_ = "binary" if self.linear_mode == "binary" else "continuous"
 
         if self.artificial_type is not None:
             self._compute_FDPplus()
