@@ -1,10 +1,10 @@
-# [A predictive simulation framework for immunomodulatory drug interventions in pregnancy]
+# [Single-cell simulation modeling of immunomodulatory drug interventions in pregnancy]
 
 **Authors**: Jakob Einhaus\*, Peter Neidlinger\*, Olivier Fondeur\*, Masaki Sato\*, Brice Gaudilliere
 
 # PTB Drug Response Prediction
 
-We present a prediction ensemble that integrates outcome modeling with treatment effect estimation on simulated single-cell data to efficiently evaluate multiple drug candidates for their potential to delay labor and prevent preterm birth (PTB).
+We present SIMCO, a prediction ensemble that integrates outcome modeling with treatment effect estimation on simulated single-cell data to efficiently evaluate multiple drug candidates for their potential to delay labor and prevent preterm birth (PTB).
 
 We first trained **CellOT**, a neural optimal transport (OT) model, to learn cell-type-specific perturbation responses across 28 immune cell populations. Next, we trained a **Stabl** model to identify a sparse set of features that accurately predict time to labor for each sample. Finally, we applied the trained models to simulated treatment effects in order to quantify each drug's impact on labor timing. By simulating drug responses at the single-cell level, our framework enables personalized evaluation of candidate therapies for PTB prevention.
 
@@ -22,8 +22,8 @@ We first trained **CellOT**, a neural optimal transport (OT) model, to learn cel
 
 To setup the corresponding virtual environment run:
 ```
-python3.9 -m venv Common_venv
-source Common_venv/bin/activate
+python3.9 -m venv SIMCO_venv
+source SIMCO_venv/bin/activate
 pip install --upgrade pip
 pip install setuptools==49.6.0
 ```
