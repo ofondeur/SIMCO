@@ -214,3 +214,5 @@ Common_venv/
 CellOT/datasets/ptb_concatenated_per_condition_celltype/cMCs_HV.h5ad
 test.ipynb
 Stabl_Launch/run_noe.py
+CellOT/PE_HAN_PBMC/
+CellOT/datasets/PE_concat/
